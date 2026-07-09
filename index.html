@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Apps</title>
+<style>
+body{font-family:system-ui,sans-serif;background:#EEF2F7;color:#16233B;min-height:100vh;
+  display:flex;align-items:center;justify-content:center;margin:0;padding:24px}
+.apps{display:flex;gap:20px;flex-wrap:wrap;justify-content:center}
+a.app{display:flex;flex-direction:column;align-items:center;gap:12px;text-decoration:none;
+  color:inherit;background:#fff;border:1.5px solid #16233B;border-radius:16px;
+  padding:28px 36px;box-shadow:4px 4px 0 rgba(22,35,59,.12);transition:transform .12s}
+a.app:hover{transform:translateY(-2px)}
+a.app img{width:72px;height:72px;border-radius:16px}
+a.app b{font-size:18px}
+a.app span{font-size:13px;color:#5A6B85}
+</style>
+</head>
+<body>
+<div class="apps">
+  <a class="app" href="timetable/timetable.html">
+    <img src="timetable/icon-192.png" alt="">
+    <b>DayLedger</b><span>plan vs reality</span>
+  </a>
+  <a class="app" href="food%20sto/pantry.html">
+    <img src="food%20sto/icon-192.png" alt="">
+    <b>Larder</b><span>food stock</span>
+  </a>
+</div>
+</body>
+</html>

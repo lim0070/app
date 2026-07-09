@@ -1,0 +1,1746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DayLedger — Plan vs Reality</title>
+<meta name="theme-color" content="#16233B">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#EEF2F7;        /* graph-paper blue-gray */
+  --grid:#D5DEE9;
+  --ink:#16233B;          /* deep navy ink */
+  --ink-soft:#5A6B85;
+  --card:#FFFFFF;
+  --hl:#FFD54D;           /* highlighter yellow */
+  --match:#2E9E6B;
+  --miss:#E4572E;
+  --unplanned:#7A5FD3;
+  --radius:10px;
+  --mono:'IBM Plex Mono',monospace;
+  --body:'IBM Plex Sans',system-ui,sans-serif;
+  --display:'Sora',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{
+  font-family:var(--body);color:var(--ink);
+  background:var(--paper);
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:28px 28px;
+  min-height:100vh;
+  padding:24px 16px 80px;
+}
+.wrap{max-width:1060px;margin:0 auto}
+
+/* ---------- header ---------- */
+header{display:flex;flex-wrap:wrap;align-items:flex-end;gap:16px;margin-bottom:20px}
+.brand h1{font-family:var(--display);font-weight:800;font-size:clamp(26px,4vw,38px);letter-spacing:-.02em;line-height:1}
+.brand h1 .hl{background:linear-gradient(transparent 55%,var(--hl) 55%)}
+.brand p{color:var(--ink-soft);font-size:14px;margin-top:6px}
+.controls{margin-left:auto;display:flex;gap:10px;flex-wrap:wrap}
+.ctrl{display:flex;flex-direction:column;gap:4px}
+.ctrl label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-soft);font-weight:600}
+.ctrl select{
+  font-family:var(--mono);font-size:14px;padding:8px 10px;border:1.5px solid var(--ink);
+  border-radius:8px;background:var(--card);color:var(--ink);cursor:pointer;
+}
+.ctrl select:focus-visible{outline:3px solid var(--hl);outline-offset:1px}
+.customslot{display:none;gap:6px;margin-top:6px}
+.customslot input{
+  width:74px;font-family:var(--mono);font-size:14px;padding:8px 8px;
+  border:1.5px solid var(--ink);border-radius:8px;background:var(--card);color:var(--ink);
+}
+.customslot input:focus-visible{outline:3px solid var(--hl);outline-offset:1px}
+.customslot .btn{padding:8px 12px}
+.datenav{display:flex;gap:6px;align-items:stretch}
+.datenav input[type=date]{font-family:var(--mono);font-size:13px;padding:8px 8px;border:1.5px solid var(--ink);border-radius:8px;background:var(--card);color:var(--ink)}
+.datenav input[type=date]:focus-visible{outline:3px solid var(--hl);outline-offset:1px}
+.navbtn{font-family:var(--mono);font-size:16px;width:34px;border:1.5px solid var(--ink);border-radius:8px;background:var(--card);color:var(--ink);cursor:pointer;transition:all .12s}
+.navbtn:hover{background:var(--ink);color:#fff}
+.navbtn:focus-visible{outline:3px solid var(--hl);outline-offset:1px}
+
+/* ---------- reminders ---------- */
+.rem-card{margin-bottom:18px}
+.remlist{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px}
+.remnote{
+  display:flex;align-items:center;gap:10px;padding:10px 14px;max-width:100%;
+  background:linear-gradient(180deg,#FFF3C4,#FFE99A);border:1.5px solid var(--ink);
+  border-radius:4px 14px 4px 4px;box-shadow:2px 3px 0 rgba(22,35,59,.18);
+  font-size:14px;font-weight:500;
+}
+.remnote .bell{font-size:15px}
+.remnote .txt{overflow-wrap:anywhere}
+.remnote .rdel{
+  border:none;background:transparent;color:var(--ink);cursor:pointer;font-size:15px;
+  line-height:1;padding:2px 4px;border-radius:4px;margin-left:2px;flex-shrink:0;
+}
+.remnote .rdel:hover{background:rgba(22,35,59,.12)}
+.remnote .rdel:focus-visible{outline:2px solid var(--ink)}
+.rem-empty{color:var(--ink-soft);font-size:13px;padding:2px 0 10px;font-style:italic}
+.sm-box{margin-top:14px;border:1.5px dashed var(--ink);border-radius:8px;padding:12px 14px;background:#FFFDF2}
+.sm-desc{font-size:14px;font-weight:500;margin-bottom:10px}
+.sm-dates{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.sm-date{font-family:var(--mono);font-size:11px;padding:4px 8px;border:1px solid var(--grid);border-radius:6px;background:#fff}
+.sm-more{font-family:var(--mono);font-size:11px;color:var(--ink-soft);align-self:center}
+.sm-actions{display:flex;gap:8px}
+.sm-err{color:var(--miss);font-size:13px;line-height:1.5}
+.ai-set{margin-top:14px;border-top:1px dashed var(--grid);padding-top:10px}
+.ai-set summary{font-size:13px;font-weight:600;cursor:pointer;color:var(--ink-soft)}
+.ai-set summary:hover{color:var(--ink)}
+.ai-set[open] summary{color:var(--ink)}
+.sm-src{font-family:var(--mono);font-size:10px;color:var(--ink-soft);background:#fff;border:1px solid var(--grid);border-radius:999px;padding:2px 8px;margin-left:8px;white-space:nowrap}
+.remrow .count{font-family:var(--mono);font-size:11px;color:var(--ink-soft);white-space:nowrap}
+.remrow .txt.expandable{cursor:pointer}
+.remrow .txt.expandable:hover{text-decoration:underline}
+.remrow .caret{font-size:10px;color:var(--ink-soft);margin-right:2px}
+.remdates{flex-basis:100%;padding:2px 0 6px 30px}
+.remdate{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:12px;color:var(--ink);padding:3px 0}
+.remdate .rdel{font-size:13px;padding:0 5px}
+.remdate .past{color:var(--ink-soft);text-decoration:line-through}
+.remnote .until{font-family:var(--mono);font-size:11px;color:var(--ink-soft);white-space:nowrap}
+.remform{display:flex;flex-direction:column;gap:12px}
+.remform input[type=text],.remform input[type=date],.remform select{
+  padding:9px 10px;border:1.5px solid var(--grid);border-radius:8px;
+  font-family:var(--body);font-size:14px;color:var(--ink);background:#fff;width:100%;
+}
+.remform input[type=date],.remform select{font-family:var(--mono);font-size:13px;cursor:pointer}
+.remform input:focus-visible,.remform select:focus-visible{outline:3px solid var(--hl);outline-offset:1px;border-color:var(--ink)}
+.remrow{display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px dashed var(--grid);font-size:14px;flex-wrap:wrap}
+.remrow:last-child{border-bottom:none}
+.remrow .txt{font-weight:500;overflow-wrap:break-word;flex:1 1 150px;min-width:150px}
+.remrow .range{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--ink-soft);white-space:nowrap;text-align:right}
+.remrow .rdel{border:none;background:transparent;color:var(--miss);cursor:pointer;font-size:16px;padding:2px 6px;border-radius:4px;flex-shrink:0}
+.remrow .rdel:hover{background:rgba(228,87,46,.12)}
+.remrow .rdel:focus-visible{outline:2px solid var(--miss)}
+.remadd input[type=date]{
+  flex:0 0 auto;padding:8px 8px;border:1.5px solid var(--grid);border-radius:8px;
+  font-family:var(--mono);font-size:12px;color:var(--ink);
+}
+.remadd input[type=date]:focus-visible{outline:3px solid var(--hl);outline-offset:1px;border-color:var(--ink)}
+
+/* ---------- tabs ---------- */
+.tabs{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.tab{
+  font-family:var(--display);font-weight:700;font-size:14px;
+  padding:10px 18px;border:1.5px solid var(--ink);border-radius:999px;
+  background:var(--card);color:var(--ink);cursor:pointer;transition:all .15s;
+}
+.tab:hover{transform:translateY(-1px)}
+.tab:focus-visible{outline:3px solid var(--hl);outline-offset:2px}
+.tab.active{background:var(--ink);color:#fff;box-shadow:3px 3px 0 var(--hl)}
+.tab .step{font-family:var(--mono);font-weight:400;opacity:.6;margin-right:6px;font-size:12px}
+
+/* ---------- layout ---------- */
+.main{display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:18px;align-items:start}
+@media(max-width:860px){.main{grid-template-columns:1fr}}
+
+.card{background:var(--card);border:1.5px solid var(--ink);border-radius:var(--radius);box-shadow:4px 4px 0 rgba(22,35,59,.12)}
+.card-h{padding:14px 16px;border-bottom:1.5px solid var(--grid);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.card-h h2{font-family:var(--display);font-size:16px;font-weight:700}
+.card-h .hint{font-size:12px;color:var(--ink-soft)}
+.card-b{padding:14px 16px}
+
+/* ---------- timetable grid ---------- */
+.gridwrap{overflow-x:auto}
+.tt{width:100%;border-collapse:collapse;min-width:420px}
+.tt th{
+  font-family:var(--display);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;
+  padding:8px 6px;border-bottom:2px solid var(--ink);text-align:left;
+}
+.tt th.dim{color:var(--ink-soft)}
+.tt td{border-bottom:1px solid var(--grid);padding:3px 4px;vertical-align:middle}
+.time{font-family:var(--mono);font-size:12px;color:var(--ink-soft);white-space:nowrap;width:1%;padding-right:10px !important}
+.hourmark{font-weight:500;color:var(--ink)}
+.cell{
+  height:34px;border-radius:6px;border:1.5px dashed var(--grid);
+  display:flex;align-items:center;padding:0 10px;font-size:13px;font-weight:500;
+  cursor:pointer;user-select:none;-webkit-user-select:none;transition:border-color .1s, box-shadow .1s;
+  min-width:120px;color:var(--ink);
+}
+.cell.filled{border-style:solid;border-color:transparent}
+.cell.locked{cursor:default;opacity:.9}
+.cell.editable:hover{border-color:var(--ink)}
+.cell.editable:focus-visible{outline:3px solid var(--hl);outline-offset:1px}
+.cell .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cell .del{
+  margin-left:auto;flex-shrink:0;border:none;background:rgba(255,255,255,.4);color:inherit;
+  width:18px;height:18px;line-height:1;border-radius:50%;cursor:pointer;font-size:13px;
+  display:none;align-items:center;justify-content:center;padding:0;font-family:var(--body);
+}
+.cell.filled.editable:hover .del,.cell.filled.editable:focus-within .del{display:flex}
+.cell .del:hover{background:#fff;color:#16233B}
+.cell .del:focus-visible{outline:2px solid var(--hl)}
+.cell.preview{border:2px dashed var(--ink) !important;box-shadow:inset 0 0 0 1px #fff}
+.cell.preview-erase{border:2px dashed var(--miss) !important;opacity:.35}
+@media(hover:none){.cell.filled.editable .del{display:flex}}
+.matchdot{width:22px;text-align:center;font-size:14px}
+.matchdot span{display:inline-block;width:10px;height:10px;border-radius:50%}
+.m-yes{background:var(--match)}
+.m-no{background:var(--miss)}
+.m-extra{background:var(--unplanned)}
+.m-none{background:var(--grid)}
+
+/* ---------- palette ---------- */
+.pal{display:flex;flex-direction:column;gap:8px}
+.chip{
+  display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;
+  border:1.5px solid var(--grid);background:#fff;cursor:pointer;font-size:14px;font-weight:500;
+  text-align:left;width:100%;transition:all .12s;color:var(--ink);font-family:var(--body);
+}
+.chip:hover{border-color:var(--ink)}
+.chip:focus-visible{outline:3px solid var(--hl);outline-offset:1px}
+.chip.sel{border-color:var(--ink);box-shadow:3px 3px 0 var(--hl);transform:translate(-1px,-1px)}
+.chip .sw{width:16px;height:16px;border-radius:4px;flex-shrink:0;border:1px solid rgba(0,0,0,.15)}
+.chip .mins{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--ink-soft)}
+.chip.eraser .sw{background:repeating-linear-gradient(45deg,#fff,#fff 3px,var(--grid) 3px,var(--grid) 6px)}
+.addrow{display:flex;gap:6px;margin-top:4px}
+.addrow input{
+  flex:1;min-width:0;padding:8px 10px;border:1.5px solid var(--grid);border-radius:8px;
+  font-family:var(--body);font-size:13px;color:var(--ink);
+}
+.addrow input:focus-visible{outline:3px solid var(--hl);outline-offset:1px;border-color:var(--ink)}
+.btn{
+  font-family:var(--display);font-weight:700;font-size:13px;padding:8px 14px;border-radius:8px;
+  border:1.5px solid var(--ink);background:var(--ink);color:#fff;cursor:pointer;transition:transform .12s;
+}
+.btn:hover{transform:translateY(-1px)}
+.btn:focus-visible{outline:3px solid var(--hl);outline-offset:2px}
+.btn.ghost{background:#fff;color:var(--ink)}
+.btn.danger{background:#fff;color:var(--miss);border-color:var(--miss)}
+.side-actions{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+.copybtn{width:100%}
+.tpllabel{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-soft);font-weight:600;margin-bottom:6px}
+.addrow select{
+  flex:1;min-width:0;padding:8px 10px;border:1.5px solid var(--grid);border-radius:8px;
+  font-family:var(--body);font-size:13px;color:var(--ink);background:#fff;cursor:pointer;
+}
+.addrow select:focus-visible{outline:3px solid var(--hl);outline-offset:1px;border-color:var(--ink)}
+.tpllist{margin-top:10px}
+.tplrow{display:flex;align-items:center;gap:8px;padding:8px 2px;border-bottom:1px dashed var(--grid);font-size:13px}
+.tplrow:last-child{border-bottom:none}
+.tplrow .txt{font-weight:500;overflow-wrap:anywhere;flex:1}
+.tplrow .mini{
+  font-family:var(--display);font-weight:700;font-size:11px;padding:4px 10px;border-radius:6px;
+  border:1.5px solid var(--ink);background:#fff;color:var(--ink);cursor:pointer;flex-shrink:0;
+}
+.tplrow .mini:hover{background:var(--ink);color:#fff}
+.tplrow .mini:focus-visible{outline:2px solid var(--hl)}
+.tplrow .mini.del{border-color:var(--miss);color:var(--miss)}
+.tplrow .mini.del:hover{background:var(--miss);color:#fff}
+
+/* ---------- review ---------- */
+.review-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px}
+.score-big{display:flex;align-items:center;gap:20px;padding:6px 0}
+.ring{position:relative;width:120px;height:120px;flex-shrink:0}
+.ring svg{transform:rotate(-90deg)}
+.ring .pct{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-family:var(--display);font-weight:800;font-size:28px;
+}
+.score-note{font-size:14px;line-height:1.5}
+.score-note b{font-family:var(--display)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--ink-soft);margin-top:10px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:10px;height:10px;border-radius:50%;display:inline-block}
+
+.statline{display:flex;justify-content:space-between;font-size:14px;padding:8px 0;border-bottom:1px dashed var(--grid)}
+.statline:last-child{border-bottom:none}
+.statline b{font-family:var(--mono);font-weight:500}
+
+.catrow{margin-bottom:12px}
+.catrow .lbl{display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px}
+.catrow .lbl .nums{font-family:var(--mono);font-size:11px;color:var(--ink-soft)}
+.barpair{display:flex;flex-direction:column;gap:3px}
+.bar{height:10px;border-radius:5px;background:var(--grid);overflow:hidden;position:relative}
+.bar>i{display:block;height:100%;border-radius:5px}
+.bar.plan>i{opacity:.45}
+.bartag{font-size:10px;font-family:var(--mono);color:var(--ink-soft);width:38px;flex-shrink:0}
+.barline{display:flex;align-items:center;gap:8px}
+
+.insights li,.sugs li{
+  list-style:none;padding:10px 12px;border:1.5px solid var(--grid);border-radius:8px;
+  font-size:14px;line-height:1.45;margin-bottom:8px;background:#fff;
+}
+.sugs li{border-left:5px solid var(--hl)}
+.sugs li .when{font-family:var(--mono);font-size:12px;color:var(--ink-soft);display:block;margin-bottom:2px}
+.empty-note{color:var(--ink-soft);font-size:14px;padding:8px 0}
+
+/* ---------- week view ---------- */
+.wknav{display:flex;gap:6px;align-items:center;margin-left:auto}
+.wknav input[type=date]{
+  font-family:var(--mono);font-size:12px;padding:7px 6px;border:1.5px solid var(--ink);
+  border-radius:8px;background:var(--card);color:var(--ink);cursor:pointer;
+}
+.wknav input[type=date]:focus-visible{outline:3px solid var(--hl);outline-offset:1px}
+.wkmode{display:flex;gap:6px}
+.wkbtn{padding:6px 14px;font-size:12px}
+.wkbtn.ghost.active,.wkbtn.active{background:var(--ink);color:#fff;box-shadow:2px 2px 0 var(--hl)}
+.wkbtn.ghost:not(.active){background:#fff;color:var(--ink)}
+.wk th.wkhead{cursor:pointer;text-align:center;padding:8px 4px;min-width:96px}
+.wk th.wkhead:hover{background:var(--paper)}
+.wk th.wkhead .dow{display:block;font-size:12px}
+.wk th.wkhead .today-tag{
+  display:inline-block;background:var(--hl);border-radius:999px;padding:1px 8px;
+  font-size:9px;letter-spacing:.06em;margin-top:3px;
+}
+.wk th.wkhead .rems{
+  display:block;font-family:var(--body);font-weight:500;font-size:10px;color:var(--ink-soft);
+  text-transform:none;letter-spacing:0;margin-top:3px;max-width:110px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-left:auto;margin-right:auto;
+}
+.wcell{
+  height:22px;border-radius:4px;font-size:10px;font-weight:600;
+  display:flex;align-items:center;justify-content:center;overflow:hidden;
+  white-space:nowrap;text-overflow:ellipsis;padding:0 4px;
+}
+.wcell.blank{border:1px dashed var(--grid)}
+
+footer{margin-top:28px;text-align:center;font-size:12px;color:var(--ink-soft);font-family:var(--mono)}
+.databar{display:flex;gap:10px;justify-content:center;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+.databar .btn{font-size:12px;padding:7px 12px}
+#saveStatus{font-size:11px;color:var(--ink-soft)}
+@media(prefers-reduced-motion:reduce){*{transition:none !important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <h1>Day<span class="hl">Ledger</span></h1>
+      <p>Plan your day, log what really happened, and see the gap.</p>
+    </div>
+    <div class="controls">
+      <div class="ctrl"><label for="datePick">Date</label>
+        <div class="datenav">
+          <button class="navbtn" id="prevDay" aria-label="Previous day" title="Previous day">‹</button>
+          <input type="date" id="datePick" aria-label="Choose date">
+          <button class="navbtn" id="nextDay" aria-label="Next day" title="Next day">›</button>
+        </div></div>
+      <div class="ctrl"><label for="startH">Day starts</label>
+        <select id="startH"></select></div>
+      <div class="ctrl"><label for="endH">Day ends</label>
+        <select id="endH"></select></div>
+      <div class="ctrl"><label for="slotMin">Slot length</label>
+        <select id="slotMin">
+          <option value="15">15 min</option>
+          <option value="30" selected>30 min</option>
+          <option value="60">60 min</option>
+          <option value="custom">Custom…</option>
+        </select>
+        <div class="customslot" id="customSlot">
+          <input type="number" id="customSlotVal" min="5" max="480" step="5" placeholder="min" aria-label="Custom slot length in minutes">
+          <button class="btn" id="customSlotOk" type="button">Set</button>
+        </div></div>
+    </div>
+  </header>
+
+  <div class="tabs" role="tablist">
+    <button class="tab active" data-tab="plan" role="tab"><span class="step">1</span>Build your plan</button>
+    <button class="tab" data-tab="actual" role="tab"><span class="step">2</span>Log what happened</button>
+    <button class="tab" data-tab="review" role="tab"><span class="step">3</span>Review &amp; suggestions</button>
+    <button class="tab" data-tab="remind" role="tab"><span class="step">4</span>Add reminder</button>
+    <button class="tab" data-tab="week" role="tab"><span class="step">5</span>Next 7 days</button>
+    <button class="tab" data-tab="template" role="tab"><span class="step">6</span>Template</button>
+  </div>
+
+  <!-- REMINDERS (always visible, shows reminders active on the selected date) -->
+  <div class="card rem-card" id="remCard">
+    <div class="card-h"><h2>🔔 Reminders</h2><span class="hint" id="remHint"></span></div>
+    <div class="card-b">
+      <div class="remlist" id="remList"></div>
+    </div>
+  </div>
+
+  <!-- PLAN / ACTUAL shared view -->
+  <div id="editView" class="main">
+    <div class="card">
+      <div class="card-h">
+        <h2 id="gridTitle">Your planned timetable</h2>
+        <span class="hint" id="gridHint">Pick an activity on the right, then click or drag across slots.</span>
+      </div>
+      <div class="card-b gridwrap"><table class="tt" id="ttGrid"></table></div>
+    </div>
+
+    <div class="card">
+      <div class="card-h"><h2>Activities</h2></div>
+      <div class="card-b">
+        <div class="pal" id="palette"></div>
+        <div class="addrow">
+          <input id="newAct" type="text" maxlength="24" placeholder="Add activity…" aria-label="New activity name">
+          <button class="btn" id="addActBtn">Add</button>
+        </div>
+        <div class="side-actions">
+          <button class="btn ghost copybtn" id="copyPlanBtn" style="display:none">Copy plan into actual</button>
+          <button class="btn danger" id="clearBtn">Clear this column</button>
+        </div>
+        <div id="tplApplyRow" style="display:none;margin-top:16px">
+          <div class="tpllabel">Copy from template</div>
+          <div class="addrow">
+            <select id="tplSelect" aria-label="Choose template"></select>
+            <button class="btn" id="applyTplBtn">Apply</button>
+          </div>
+        </div>
+        <div id="tplTools" style="display:none;margin-top:16px">
+          <div class="tpllabel">Save as template</div>
+          <div class="addrow">
+            <input id="tplName" type="text" maxlength="30" placeholder="Template name…" aria-label="Template name">
+            <button class="btn" id="saveTplBtn">Save</button>
+          </div>
+          <div id="tplList" class="tpllist"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- REVIEW view -->
+  <div id="reviewView" style="display:none">
+    <div class="review-grid">
+      <div class="card">
+        <div class="card-h"><h2 id="reviewTitle">How well did the plan hold?</h2></div>
+        <div class="card-b">
+          <div class="score-big">
+            <div class="ring" id="ring"></div>
+            <div class="score-note" id="scoreNote"></div>
+          </div>
+          <div class="legend">
+            <span><i style="background:var(--match)"></i>Followed plan</span>
+            <span><i style="background:var(--miss)"></i>Planned, not done</span>
+            <span><i style="background:var(--unplanned)"></i>Unplanned activity</span>
+            <span><i style="background:var(--grid)"></i>Empty</span>
+          </div>
+          <div style="margin-top:14px" id="quickStats"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><h2>Planned vs actual by activity</h2><span class="hint">faded bar = planned · solid = actual</span></div>
+        <div class="card-b" id="catBars"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><h2>What the numbers say</h2></div>
+        <div class="card-b"><ul class="insights" id="insights"></ul></div>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><h2>Ideas for your free slots</h2></div>
+        <div class="card-b"><ul class="sugs" id="sugs"></ul></div>
+      </div>
+
+      <div class="card" style="grid-column:1/-1">
+        <div class="card-h"><h2>Side-by-side ledger</h2><span class="hint">read-only comparison of every slot</span></div>
+        <div class="card-b gridwrap"><table class="tt" id="reviewGrid"></table></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- REMINDER MANAGER view -->
+  <div id="remindView" style="display:none">
+    <div class="card" style="margin-bottom:18px">
+      <div class="card-h"><h2>✨ Smart add</h2><span class="hint">describe the reminder in plain English — I'll work out the dates</span></div>
+      <div class="card-b">
+        <div class="addrow">
+          <input id="smartText" type="text" maxlength="160"
+            placeholder='e.g. "remind me one day before every US stock market close or early close" · "pay utility bill every first Monday of the month"'
+            aria-label="Describe your reminder">
+          <button class="btn" id="smartBtn">Parse</button>
+        </div>
+        <div id="smartPreview" style="display:none"></div>
+        <details class="ai-set">
+          <summary>🤗 AI settings (optional — smarter parsing via Hugging Face)</summary>
+          <p class="hint" style="margin:8px 0 10px">
+            Requests that the built-in patterns can't handle get sent to a free Hugging Face model.
+            Create a free account at huggingface.co → Settings → Access Tokens → New token (read).
+            Your token is stored only in this browser and is never included in exported data.
+          </p>
+          <div class="addrow">
+            <input id="hfToken" type="password" placeholder="hf_xxxxxxxx… token" aria-label="Hugging Face access token" autocomplete="off">
+          </div>
+          <div class="addrow" style="margin-top:8px">
+            <input id="hfModel" type="text" placeholder="model id" aria-label="Model id" autocomplete="off">
+            <button class="btn" id="hfSave" type="button">Save</button>
+          </div>
+          <p class="hint" id="aiStatus" style="margin-top:8px"></p>
+        </details>
+      </div>
+    </div>
+    <div class="main" style="grid-template-columns:minmax(0,1fr) minmax(0,1.2fr)">
+      <div class="card">
+        <div class="card-h"><h2>Add a reminder</h2></div>
+        <div class="card-b">
+          <div class="remform">
+            <div class="ctrl"><label for="remText">Reminder</label>
+              <input id="remText" type="text" maxlength="60" placeholder="e.g. File tax return" aria-label="Reminder text"></div>
+            <div class="ctrl"><label for="remDate">Start date</label>
+              <input id="remDate" type="date" aria-label="Reminder start date"></div>
+            <div class="ctrl"><label for="remEndDate">End date</label>
+              <input id="remEndDate" type="date" aria-label="Reminder end date"></div>
+            <button class="btn" id="addRemBtn">Add reminder</button>
+          </div>
+          <p class="hint" style="margin-top:12px">It will appear in the 🔔 bar above the timetable every day from the start date through the end date (inclusive).</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-h"><h2>All reminders</h2></div>
+        <div class="card-b" id="remAll"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- WEEK view: today + next 5 days -->
+  <div id="weekView" style="display:none">
+    <div class="card">
+      <div class="card-h">
+        <h2 id="weekTitle">Next 7 days</h2>
+        <span class="hint">click a day's header to jump to it</span>
+        <div class="wknav">
+          <button class="btn ghost wkbtn" id="wkToday" type="button">Today</button>
+          <button class="navbtn" id="wkPrev" type="button" aria-label="Back 7 days" title="Back 7 days">‹</button>
+          <input type="date" id="wkDate" aria-label="Choose start date for the 7-day view" title="Jump to any date">
+          <button class="navbtn" id="wkNext" type="button" aria-label="Forward 7 days" title="Forward 7 days">›</button>
+        </div>
+        <div class="wkmode">
+          <button class="btn wkbtn active" data-mode="plan" type="button">Plan</button>
+          <button class="btn wkbtn ghost" data-mode="actual" type="button">Actual</button>
+        </div>
+      </div>
+      <div class="card-b gridwrap"><table class="tt wk" id="weekGrid"></table></div>
+    </div>
+  </div>
+
+  <footer>
+    <div class="databar">
+      <button class="btn ghost" id="exportBtn" type="button">⬇ Export data</button>
+      <button class="btn ghost" id="importBtn" type="button">⬆ Import data</button>
+      <input type="file" id="importFile" accept=".json,application/json" style="display:none">
+      <button class="btn ghost" id="syncBtn" type="button" style="display:none">☁ Sign in to sync</button>
+      <span id="saveStatus"></span>
+      <span id="syncStatus"></span>
+    </div>
+    <p>Each date keeps its own plan &amp; actual — use the date picker or ‹ › to move between days.</p>
+  </footer>
+</div>
+
+<!-- Firebase compat SDK (optional cloud sync). If these fail to load (offline /
+     no config), the app still runs fully local — everything below is guarded. -->
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script>
+"use strict";
+/* ---------------- state ---------------- */
+const PRESET_COLORS = ["#4C7DD9","#2E9E6B","#E4572E","#7A5FD3","#D98A1F","#1FA8A0","#C64C82","#5E7A2E","#8A6A4B","#3A5FA0"];
+const todayISO = () => { const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); };
+const state = {
+  startHour: 7,
+  endHour: 23,
+  slotMin: 30,
+  date: todayISO(),
+  days: {},    // dateISO -> {plan:{}, actual:{}} where each maps slotStartMinute -> activityId
+  reminders: [],  // {id, date, end, text} — shown every day from date through end, inclusive
+  tplWork: {},    // template being edited (slotStartMinute -> activityId)
+  templates: [],  // saved templates: {id, name, map, startHour, slotMin}
+  activities: [
+    {id:"a1", name:"Sleep",    color:"#4C7DD9"},
+    {id:"a2", name:"Study",    color:"#2E9E6B"},
+    {id:"a3", name:"Work",     color:"#E4572E"},
+    {id:"a4", name:"Exercise", color:"#7A5FD3"},
+    {id:"a5", name:"Meals",    color:"#D98A1F"},
+    {id:"a6", name:"Leisure",  color:"#1FA8A0"},
+    {id:"a7", name:"Chores",   color:"#C64C82"},
+  ],
+  selected: "a2",
+  tab: "plan",
+  anchor: null,   // start slot of an in-progress click range
+  hoverM: null    // slot currently hovered while a range is open
+};
+let actSeq = 8;
+
+/* per-day data: state.plan / state.actual always point at the selected date */
+function curDay(){
+  if(!state.days[state.date]) state.days[state.date]={plan:{},actual:{}};
+  return state.days[state.date];
+}
+Object.defineProperty(state,"plan",  {get(){return curDay().plan;},  set(v){curDay().plan=v;}});
+Object.defineProperty(state,"actual",{get(){return curDay().actual;},set(v){curDay().actual=v;}});
+
+/* ---------------- persistence ---------------- */
+const STORE_KEY="dayledger-v1";
+let storageOK=false;
+try{ localStorage.setItem("__dl_test","1"); localStorage.removeItem("__dl_test"); storageOK=true; }catch(e){ /* storage blocked here; export/import still works */ }
+
+function serialize(){
+  return JSON.stringify({
+    v:1, startHour:state.startHour, endHour:state.endHour, slotMin:state.slotMin,
+    days:state.days, reminders:state.reminders, activities:state.activities,
+    templates:state.templates, tplWork:state.tplWork,
+    seqs:{act:actSeq, rem:remSeq, tpl:tplSeq}
+  });
+}
+function applyData(d){
+  if(!d || typeof d!=="object") return false;
+  if(Array.isArray(d.activities) && d.activities.length) state.activities=d.activities;
+  if(Number.isFinite(+d.startHour)) state.startHour=+d.startHour;
+  if(Number.isFinite(+d.endHour) && +d.endHour>state.startHour) state.endHour=+d.endHour;
+  if(Number.isFinite(+d.slotMin) && +d.slotMin>=5) state.slotMin=+d.slotMin;
+  if(d.days && typeof d.days==="object") state.days=d.days;
+  if(Array.isArray(d.reminders)) state.reminders=d.reminders;
+  if(Array.isArray(d.templates)) state.templates=d.templates;
+  if(d.tplWork && typeof d.tplWork==="object") state.tplWork=d.tplWork;
+  if(d.seqs){ actSeq=+d.seqs.act||actSeq; remSeq=+d.seqs.rem||remSeq; tplSeq=+d.seqs.tpl||tplSeq; }
+  if(!actById(state.selected) && state.activities.length) state.selected=state.activities[0].id;
+  return true;
+}
+function restore(){
+  if(!storageOK) return;
+  try{
+    const raw=localStorage.getItem(STORE_KEY);
+    if(raw) applyData(JSON.parse(raw));
+  }catch(e){ /* corrupt data: start fresh */ }
+}
+let saveTimer=null;
+function scheduleSave(){
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(()=>{
+    if(storageOK){ try{ localStorage.setItem(STORE_KEY, serialize()); pulseStatus(); }catch(e){} }
+    noteLocalChanges();   /* stamp edited sections for cloud sync */
+    cloudPush();          /* no-op unless signed in */
+  },400);
+}
+function pulseStatus(){
+  const el=$("#saveStatus"); if(!el) return;
+  el.textContent="✓ saved";
+  clearTimeout(pulseStatus._t);
+  pulseStatus._t=setTimeout(()=>{ el.textContent="auto-saves to this browser"; },1200);
+}
+
+/* ---------------- helpers ---------------- */
+const $ = s => document.querySelector(s);
+const fmt = m => String(Math.floor(m/60)).padStart(2,"0") + ":" + String(m%60).padStart(2,"0");
+const actById = id => state.activities.find(a=>a.id===id);
+function slotStarts(){
+  const out=[]; for(let m=state.startHour*60; m<state.endHour*60; m+=state.slotMin) out.push(m); return out;
+}
+function hoursLabel(min){
+  if(min===0) return "0 min";
+  const h=Math.floor(min/60), m=min%60;
+  return (h? h+"h":"") + (h&&m?" ":"") + (m? m+"min":"");
+}
+function textColorFor(hex){
+  const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+  return (r*299+g*587+b*114)/1000 > 150 ? "#16233B" : "#FFFFFF";
+}
+
+/* remap slot maps when duration / hours change */
+function remap(oldMap, oldStart, oldSlot){
+  const next={};
+  for(const m of slotStarts()){
+    const oldKey = oldStart*60 + Math.floor((m - oldStart*60)/oldSlot)*oldSlot;
+    if(oldMap[oldKey]!==undefined && m>=oldStart*60) next[m]=oldMap[oldKey];
+  }
+  return next;
+}
+function remapAllDays(oldStart,oldSlot){
+  for(const d of Object.keys(state.days)){
+    state.days[d].plan  = remap(state.days[d].plan,  oldStart, oldSlot);
+    state.days[d].actual= remap(state.days[d].actual,oldStart, oldSlot);
+  }
+}
+const prettyDate = iso => new Date(iso+"T12:00:00").toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric"});
+
+/* ---------------- header controls ---------------- */
+function setSlotOption(sel,v){
+  if(["15","30","60"].includes(String(v))){          /* matches a preset */
+    const old=sel.querySelector("option[data-custom]");
+    if(old) old.remove();
+    sel.value=String(v); return;
+  }
+  let opt=sel.querySelector("option[data-custom]");  /* reuse or create the custom entry */
+  if(!opt){
+    opt=document.createElement("option");
+    opt.dataset.custom="1";
+    sel.insertBefore(opt, sel.querySelector("option[value=custom]"));
+  }
+  opt.value=String(v); opt.textContent=v+" min";
+  sel.value=String(v);
+}
+/* re-point header controls at current state (after import or a cloud pull) */
+function refreshControls(){
+  $("#datePick").value=state.date;
+  $("#startH").value=state.startHour;
+  $("#endH").value=state.endHour;
+  setSlotOption($("#slotMin"), state.slotMin);
+  $("#customSlot").style.display="none";
+}
+function initControls(){
+  const sh=$("#startH"), eh=$("#endH");
+  for(let h=0;h<=23;h++){ sh.add(new Option(fmt(h*60),h)); }
+  for(let h=1;h<=24;h++){ eh.add(new Option(fmt(h*60===1440?1439:h*60).replace("23:59","24:00"),h)); }
+  sh.value=state.startHour; eh.value=state.endHour;
+  setSlotOption($("#slotMin"), state.slotMin);   /* restores custom lengths too */
+
+  function onRangeChange(){
+    const oldStart=state.startHour, oldSlot=state.slotMin;
+    let s=+sh.value, e=+eh.value;
+    if(e<=s){ e=s+1; eh.value=e; }
+    state.startHour=s; state.endHour=e;
+    remapAllDays(oldStart,oldSlot);
+    renderAll();
+  }
+  sh.onchange=onRangeChange; eh.onchange=onRangeChange;
+  function applySlot(v){
+    const oldStart=state.startHour, oldSlot=state.slotMin;
+    setSlotOption($("#slotMin"),v);
+    if(v===oldSlot) return;
+    state.slotMin=v;
+    remapAllDays(oldStart,oldSlot);
+    renderAll();
+  }
+  $("#slotMin").onchange=function(){
+    if(this.value==="custom"){                 /* reveal inline input, wait for Set */
+      const box=$("#customSlot"), inp=$("#customSlotVal");
+      box.style.display="flex";
+      inp.value=state.slotMin; inp.focus(); inp.select();
+      return;
+    }
+    $("#customSlot").style.display="none";
+    applySlot(+this.value);
+  };
+  function commitCustomSlot(){
+    const inp=$("#customSlotVal");
+    const v=Math.round(parseFloat(inp.value));
+    if(!Number.isFinite(v)||v<5||v>480){       /* invalid: flag the field, keep waiting */
+      inp.style.borderColor="var(--miss)"; inp.focus(); inp.select(); return;
+    }
+    inp.style.borderColor="";
+    $("#customSlot").style.display="none";
+    applySlot(v);
+  }
+  $("#customSlotOk").onclick=commitCustomSlot;
+  $("#customSlotVal").addEventListener("keydown",e=>{
+    if(e.key==="Enter") commitCustomSlot();
+    if(e.key==="Escape"){ $("#customSlot").style.display="none"; $("#slotMin").value=String(state.slotMin); }
+  });
+
+  /* calendar / date navigation */
+  const dp=$("#datePick");
+  dp.value=state.date;
+  dp.onchange=()=>{ if(dp.value){ state.date=dp.value; renderAll(); } };
+  const shiftDay=n=>{
+    const d=new Date(state.date+"T12:00:00");
+    d.setDate(d.getDate()+n);
+    state.date=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+    dp.value=state.date;
+    renderAll();
+  };
+  $("#prevDay").onclick=()=>shiftDay(-1);
+  $("#nextDay").onclick=()=>shiftDay(1);
+}
+
+/* ---------------- tabs ---------------- */
+document.querySelectorAll(".tab").forEach(btn=>{
+  btn.onclick=()=>{
+    state.tab=btn.dataset.tab;
+    document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("active",b===btn));
+    renderAll();
+  };
+});
+
+/* ---------------- reminders ---------------- */
+let remSeq = 1;
+const remEnd = r => r.end || r.date;
+const activeOn = (r,iso) => iso >= r.date && iso <= remEnd(r);
+function remRange(r){
+  return remEnd(r)===r.date
+    ? prettyDate(r.date)
+    : `${prettyDate(r.date)} → ${prettyDate(remEnd(r))}`;
+}
+function renderReminders(){
+  const list=$("#remList");
+  const todays = state.reminders.filter(r=>activeOn(r,state.date));
+  const others = state.reminders.length - todays.length;
+  $("#remHint").textContent = prettyDate(state.date) + (others>0 ? ` · ${others} on other date${others>1?"s":""}` : "");
+  if(!todays.length){
+    list.innerHTML = `<div class="rem-empty">No reminders for this day. Add one in step 4.</div>`;
+  } else {
+    list.innerHTML = todays.map(r=>
+      `<div class="remnote"><span class="bell">📌</span><span class="txt">${esc(r.text)}</span>`
+      + (remEnd(r)!==r.date ? `<span class="until">until ${prettyDate(remEnd(r))}</span>` : "")
+      + `<button class="rdel" data-id="${r.id}" aria-label="Delete reminder: ${esc(r.text)}" title="Delete reminder">×</button></div>`
+    ).join("");
+    list.querySelectorAll(".rdel").forEach(b=>b.onclick=()=>deleteReminder(+b.dataset.id));
+  }
+  scheduleSave();
+}
+const expandedSeries=new Set();
+function renderRemindAll(){
+  const box=$("#remAll");
+  if(!state.reminders.length){
+    box.innerHTML=`<p class="empty-note">No reminders yet — add your first one on the left.</p>`;
+    return;
+  }
+  const today=todayISO();
+  const sorted=[...state.reminders].sort((a,b)=>a.date<b.date?-1:1);
+  const seen=new Set(); const rows=[];
+  for(const r of sorted){
+    if(r.series){
+      if(seen.has(r.series)) continue;
+      seen.add(r.series);
+      const items=sorted.filter(x=>x.series===r.series);
+      const next=items.find(x=>x.date>=today) || items[items.length-1];
+      const open=expandedSeries.has(r.series);
+      rows.push(`<div class="remrow"><span>📌</span>
+        <span class="txt expandable" data-toggle="${esc(r.series)}" role="button" tabindex="0"
+          title="${open?"Hide":"Show"} all dates"><span class="caret">${open?"▾":"▸"}</span>${esc(r.seriesLabel||r.text)}</span>
+        <span class="count">${items.length} dates</span>
+        <span class="range">next: ${prettyDate(next.date)}</span>
+        <button class="rdel" data-series="${esc(r.series)}" aria-label="Delete series ${esc(r.seriesLabel||r.text)}" title="Delete whole series">×</button>
+        ${open?`<div class="remdates">${items.map(x=>
+          `<div class="remdate"><span class="${x.date<today?'past':''}">${prettyDate(x.date)}${x.date<today?' (past)':''}</span>
+           <button class="rdel" data-id="${x.id}" aria-label="Delete ${prettyDate(x.date)} from series" title="Remove this date">×</button></div>`
+        ).join("")}</div>`:""}</div>`);
+    } else {
+      rows.push(`<div class="remrow"><span>📌</span><span class="txt">${esc(r.text)}</span>
+        <span class="range">${remRange(r)}</span>
+        <button class="rdel" data-id="${r.id}" aria-label="Delete reminder: ${esc(r.text)}" title="Delete">×</button></div>`);
+    }
+  }
+  box.innerHTML=rows.join("");
+  box.querySelectorAll(".txt.expandable").forEach(el=>{
+    const toggle=()=>{
+      const sid=el.dataset.toggle;
+      expandedSeries.has(sid) ? expandedSeries.delete(sid) : expandedSeries.add(sid);
+      renderRemindAll();
+    };
+    el.onclick=toggle;
+    el.addEventListener("keydown",e=>{ if(e.key==="Enter"||e.key===" "){e.preventDefault();toggle();} });
+  });
+  box.querySelectorAll(".rdel").forEach(b=>b.onclick=()=>{
+    if(b.dataset.series){
+      state.reminders=state.reminders.filter(r=>r.series!==b.dataset.series);
+      expandedSeries.delete(b.dataset.series);
+      renderReminders(); renderRemindAll(); scheduleSave();
+    } else deleteReminder(+b.dataset.id);
+  });
+}
+function deleteReminder(id){
+  state.reminders = state.reminders.filter(r=>r.id!==id);
+  renderReminders();
+  if(state.tab==="remind") renderRemindAll();
+}
+function addReminder(){
+  const txt=$("#remText"), dt=$("#remDate"), ed=$("#remEndDate");
+  const text=txt.value.trim();
+  if(!text){ txt.focus(); return; }
+  let start = dt.value || state.date;
+  let end   = ed.value || start;
+  if(end < start) [start,end] = [end,start];   /* entered backwards? just swap */
+  state.reminders.push({id:remSeq++, date:start, end, text});
+  txt.value="";
+  renderReminders();
+  renderRemindAll();
+}
+$("#addRemBtn").onclick=addReminder;
+$("#remText").addEventListener("keydown",e=>{ if(e.key==="Enter") addReminder(); });
+
+/* ---------------- edit grid ---------------- */
+function currentMap(){
+  if(state.tab==="template") return state.tplWork;
+  return state.tab==="plan" ? state.plan : state.actual;
+}
+
+function renderEditGrid(){
+  const table=$("#ttGrid");
+  const isActual = state.tab==="actual";
+  const isTpl = state.tab==="template";
+  $("#gridTitle").textContent = isTpl
+    ? "Template editor"
+    : (isActual ? "What actually happened" : "Your planned timetable") + " · " + prettyDate(state.date);
+  $("#gridHint").textContent = isTpl
+    ? "Build a reusable day, then name and save it on the right. Apply it to any date from tab 1."
+    : isActual
+    ? "Click a slot to start, click another to finish the block. Esc cancels. × or right-click clears a slot."
+    : "Pick an activity, click a start slot, then click an end slot to fill the whole range. Esc cancels. × or right-click deletes.";
+  $("#copyPlanBtn").style.display = isActual ? "" : "none";
+  $("#tplApplyRow").style.display = state.tab==="plan" ? "" : "none";
+  $("#tplTools").style.display = isTpl ? "" : "none";
+  renderTplUI();
+
+  let html="<thead><tr><th class='dim'>Time</th>";
+  if(isActual) html+="<th class='dim'>Plan (goal)</th><th></th><th>Actual</th>";
+  else if(isTpl) html+="<th>Template</th>";
+  else html+="<th>Plan</th>";
+  html+="</tr></thead><tbody>";
+
+  for(const m of slotStarts()){
+    const hourTop = m % 60 === 0;
+    html+=`<tr><td class="time ${hourTop?'hourmark':''}">${fmt(m)}</td>`;
+    if(isActual){
+      html+= tdCell(m, state.plan[m], false) + tdMatch(m) + tdCell(m, state.actual[m], true);
+    } else {
+      html+= tdCell(m, currentMap()[m], true);
+    }
+    html+="</tr>";
+  }
+  table.innerHTML=html+"</tbody>";
+
+  table.querySelectorAll(".cell.editable").forEach(el=>{
+    el.addEventListener("pointerdown",e=>{
+      e.preventDefault();
+      if(e.target.closest(".del")){ clearSlot(+el.dataset.m); return; }
+      handleSlotClick(+el.dataset.m);
+    });
+    el.addEventListener("pointerenter",()=>{
+      if(state.anchor!==null){ state.hoverM=+el.dataset.m; renderEditGrid(); }
+    });
+    el.addEventListener("contextmenu",e=>{ e.preventDefault(); clearSlot(+el.dataset.m); });
+    el.addEventListener("keydown",e=>{
+      if(e.key==="Enter"||e.key===" "){ e.preventDefault(); handleSlotClick(+el.dataset.m); }
+      if(e.key==="Delete"||e.key==="Backspace"){ e.preventDefault(); clearSlot(+el.dataset.m); }
+    });
+  });
+}
+function handleSlotClick(m){
+  if(state.anchor===null){            /* first click: open the range */
+    state.anchor=m; state.hoverM=m;
+    renderEditGrid();
+  } else {                            /* second click: lock it in */
+    commitRange(state.anchor,m);
+  }
+}
+function commitRange(a,b){
+  const lo=Math.min(a,b), hi=Math.max(a,b), map=currentMap();
+  for(const m of slotStarts()){
+    if(m<lo||m>hi) continue;
+    if(state.selected==="erase") delete map[m];
+    else map[m]=state.selected;
+  }
+  state.anchor=null; state.hoverM=null;
+  renderEditGrid(); renderPalette();
+}
+function cancelRange(){
+  if(state.anchor===null) return;
+  state.anchor=null; state.hoverM=null;
+  renderEditGrid();
+}
+window.addEventListener("keydown",e=>{ if(e.key==="Escape") cancelRange(); });
+
+function tdCell(m, actId, editable){
+  const act=actById(actId);
+  /* live preview of an open click-range */
+  let previewCls="", style = act ? `background:${act.color};color:${textColorFor(act.color)};` : "";
+  let name = act ? act.name : "";
+  if(editable && state.anchor!==null){
+    const lo=Math.min(state.anchor,state.hoverM), hi=Math.max(state.anchor,state.hoverM);
+    if(m>=lo && m<=hi){
+      if(state.selected==="erase"){ previewCls=" preview-erase"; }
+      else{
+        const sel=actById(state.selected);
+        if(sel){ style=`background:${sel.color};color:${textColorFor(sel.color)};`; name=sel.name; previewCls=" preview"; }
+      }
+    }
+  }
+  const cls = "cell"+((act||previewCls===" preview")?" filled":"")+(editable?" editable":" locked")+previewCls;
+  const tab = editable ? ` tabindex="0" role="button" aria-label="${fmt(m)} slot"` : "";
+  const del = (act && editable && !previewCls) ? `<button class="del" aria-label="Clear ${fmt(m)} slot" title="Clear this slot">×</button>` : "";
+  return `<td><div class="${cls}" data-m="${m}" style="${style}"${tab}><span class="nm">${esc(name)}</span>${del}</div></td>`;
+}
+function tdMatch(m){
+  const p=state.plan[m], a=state.actual[m];
+  let cls="m-none";
+  if(p&&a) cls = p===a ? "m-yes" : "m-no";
+  else if(p&&!a) cls="m-no";
+  else if(!p&&a) cls="m-extra";
+  return `<td class="matchdot"><span class="${cls}"></span></td>`;
+}
+function clearSlot(m){
+  state.anchor=null; state.hoverM=null;
+  delete currentMap()[m];
+  renderEditGrid(); renderPalette();
+}
+function esc(s){return s.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+
+/* ---------------- palette ---------------- */
+function renderPalette(){
+  const pal=$("#palette"), map=currentMap();
+  const mins={};
+  Object.values(map).forEach(id=>mins[id]=(mins[id]||0)+state.slotMin);
+  let html="";
+  for(const a of state.activities){
+    html+=`<button class="chip ${state.selected===a.id?'sel':''}" data-id="${a.id}">
+      <span class="sw" style="background:${a.color}"></span>${esc(a.name)}
+      <span class="mins">${mins[a.id]?hoursLabel(mins[a.id]):""}</span></button>`;
+  }
+  html+=`<button class="chip eraser ${state.selected==='erase'?'sel':''}" data-id="erase">
+    <span class="sw"></span>Eraser</button>`;
+  pal.innerHTML=html;
+  pal.querySelectorAll(".chip").forEach(c=>c.onclick=()=>{state.selected=c.dataset.id;renderPalette();});
+  scheduleSave();
+}
+$("#addActBtn").onclick=addActivity;
+$("#newAct").addEventListener("keydown",e=>{ if(e.key==="Enter") addActivity(); });
+function addActivity(){
+  const inp=$("#newAct"), name=inp.value.trim();
+  if(!name) return;
+  const id="a"+(actSeq++);
+  state.activities.push({id,name,color:PRESET_COLORS[(actSeq)%PRESET_COLORS.length]});
+  state.selected=id; inp.value="";
+  renderPalette();
+}
+let clearArm=null;
+$("#clearBtn").onclick=function(){
+  if(clearArm){                                /* second click: really clear */
+    clearTimeout(clearArm); clearArm=null;
+    this.textContent="Clear this column";
+    const which = state.tab==="plan" ? "plan" : state.tab==="template" ? "tplWork" : "actual";
+    state[which]={}; renderAll(); return;
+  }
+  this.textContent="Click again to confirm";   /* first click: arm for 3s */
+  clearArm=setTimeout(()=>{ this.textContent="Clear this column"; clearArm=null; },3000);
+};
+$("#copyPlanBtn").onclick=()=>{ state.actual={...state.plan}; renderAll(); };
+
+/* ---------------- review ---------------- */
+function computeStats(){
+  const slots=slotStarts();
+  let planned=0, matched=0, missed=0, unplanned=0, bothEmpty=0, actualFilled=0;
+  const planMin={}, actMin={}, matchMin={};
+  const freeSlots=[];
+  for(const m of slots){
+    const p=state.plan[m], a=state.actual[m];
+    if(p){ planned++; planMin[p]=(planMin[p]||0)+state.slotMin; }
+    if(a){ actualFilled++; actMin[a]=(actMin[a]||0)+state.slotMin; }
+    if(p&&a&&p===a){ matched++; matchMin[p]=(matchMin[p]||0)+state.slotMin; }
+    else if(p&&(!a||a!==p)) missed++;
+    if(!p&&a) unplanned++;
+    if(!p&&!a){ bothEmpty++; freeSlots.push(m); }
+    if(!a&&p) {/* counted in missed */}
+  }
+  const actualFree = slots.filter(m=>!state.actual[m]);
+  return {slots,planned,matched,missed,unplanned,bothEmpty,actualFilled,planMin,actMin,matchMin,freeSlots,actualFree};
+}
+
+function renderReview(){
+  $("#reviewTitle").textContent = "How well did the plan hold? · " + prettyDate(state.date);
+  const s=computeStats();
+  const adher = s.planned ? Math.round(100*s.matched/s.planned) : 0;
+
+  /* ring */
+  const R=52,C=2*Math.PI*R, off=C*(1-adher/100);
+  const ringColor = adher>=75?"var(--match)":adher>=40?"var(--hl)":"var(--miss)";
+  $("#ring").innerHTML =
+    `<svg width="120" height="120" viewBox="0 0 120 120">
+      <circle cx="60" cy="60" r="${R}" fill="none" stroke="var(--grid)" stroke-width="12"/>
+      <circle cx="60" cy="60" r="${R}" fill="none" stroke="${ringColor}" stroke-width="12"
+        stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${off}"/>
+    </svg><div class="pct">${s.planned? adher+"%":"—"}</div>`;
+
+  let verdict;
+  if(!s.planned) verdict="No plan yet — go to step 1 and sketch your day first.";
+  else if(!Object.keys(state.actual).length) verdict="Plan is set. Log your actual day in step 2 to see how it held up.";
+  else if(adher>=85) verdict="<b>Excellent follow-through.</b> Your plan and your day are nearly the same picture.";
+  else if(adher>=60) verdict="<b>Solid.</b> Most of the plan happened — tighten the weak spots below.";
+  else if(adher>=35) verdict="<b>The plan slipped.</b> Look at which activities got dropped and whether the plan was realistic.";
+  else verdict="<b>Plan and reality barely met.</b> Consider fewer, bigger blocks — over-detailed plans break first.";
+  $("#scoreNote").innerHTML = verdict + (s.planned?`<br><span style="color:var(--ink-soft);font-size:13px">${s.matched} of ${s.planned} planned slots done as scheduled.</span>`:"");
+
+  /* quick stats */
+  $("#quickStats").innerHTML =
+    stat("Planned time", hoursLabel(s.planned*state.slotMin)) +
+    stat("Done as planned", hoursLabel(s.matched*state.slotMin)) +
+    stat("Planned but missed", hoursLabel(s.missed*state.slotMin)) +
+    stat("Unplanned activity", hoursLabel(s.unplanned*state.slotMin)) +
+    stat("Completely free", hoursLabel(s.bothEmpty*state.slotMin));
+  function stat(k,v){return `<div class="statline"><span>${k}</span><b>${v}</b></div>`;}
+
+  /* category bars */
+  const ids=[...new Set([...Object.keys(s.planMin),...Object.keys(s.actMin)])];
+  const maxMin=Math.max(1,...ids.map(id=>Math.max(s.planMin[id]||0,s.actMin[id]||0)));
+  $("#catBars").innerHTML = ids.length? ids.map(id=>{
+    const a=actById(id); if(!a) return "";
+    const p=s.planMin[id]||0, ac=s.actMin[id]||0;
+    return `<div class="catrow">
+      <div class="lbl"><span>${esc(a.name)}</span><span class="nums">plan ${hoursLabel(p)} · actual ${hoursLabel(ac)}</span></div>
+      <div class="barpair">
+        <div class="barline"><span class="bartag">plan</span><div class="bar plan" style="flex:1"><i style="width:${100*p/maxMin}%;background:${a.color}"></i></div></div>
+        <div class="barline"><span class="bartag">actual</span><div class="bar" style="flex:1"><i style="width:${100*ac/maxMin}%;background:${a.color}"></i></div></div>
+      </div></div>`;
+  }).join("") : `<p class="empty-note">Nothing to compare yet.</p>`;
+
+  /* insights */
+  const ins=[];
+  if(s.planned){
+    let best=null,worst=null;
+    for(const id of Object.keys(s.planMin)){
+      const rate=(s.matchMin[id]||0)/s.planMin[id];
+      if(!best||rate>best.rate) best={id,rate};
+      if(!worst||rate<worst.rate) worst={id,rate};
+    }
+    if(best&&actById(best.id)&&Object.keys(state.actual).length)
+      ins.push(`💪 <b>${esc(actById(best.id).name)}</b> was your most reliable block — ${Math.round(best.rate*100)}% of its planned time happened on schedule.`);
+    if(worst&&actById(worst.id)&&worst.rate<0.6&&Object.keys(state.actual).length&&worst.id!==(best&&best.id))
+      ins.push(`⚠️ <b>${esc(actById(worst.id).name)}</b> slipped the most — only ${Math.round(worst.rate*100)}% happened as planned. Try scheduling it earlier in the day or in one longer block.`);
+    if(s.unplanned*state.slotMin>=60)
+      ins.push(`🌀 ${hoursLabel(s.unplanned*state.slotMin)} went to things you never planned. That's not always bad — but if it was drift, name it and schedule it next time.`);
+    const coverage=Math.round(100*s.planned/s.slots.length);
+    if(coverage<50) ins.push(`🗺️ Your plan only covers ${coverage}% of the day. Unplanned hours are where time usually leaks — even a loose label ("buffer", "rest") helps.`);
+    if(coverage>=95 && adher<60) ins.push(`📏 You planned nearly every slot but followed under 60%. Wall-to-wall plans are fragile — leave deliberate buffer slots between demanding blocks.`);
+    /* streak */
+    let streak=0,bestStreak=0;
+    for(const m of s.slots){ if(state.plan[m]&&state.plan[m]===state.actual[m]){streak++;bestStreak=Math.max(bestStreak,streak);} else streak=0; }
+    if(bestStreak*state.slotMin>=120) ins.push(`🔥 Your longest on-plan stretch was ${hoursLabel(bestStreak*state.slotMin)} straight. Protect whatever conditions made that possible.`);
+  } else {
+    ins.push("Start by building a plan in step 1 — analysis appears here once there's something to measure.");
+  }
+  $("#insights").innerHTML = ins.map(t=>`<li>${t}</li>`).join("");
+
+  /* suggestions for free slots */
+  const sugList=[];
+  /* deficits: planned more than done */
+  const deficits = Object.keys(s.planMin)
+    .map(id=>({id, def:(s.planMin[id]||0)-(s.actMin[id]||0)}))
+    .filter(d=>d.def>0 && actById(d.id))
+    .sort((a,b)=>b.def-a.def);
+  const generic=["Take a 10-minute walk — movement resets focus","Review or plan tomorrow's timetable","Tidy one small area (desk, downloads folder, one shelf)","Stretch or do light mobility work","Read a few pages of something non-work","Do a quick brain-dump of open loops into a note","Rest properly — scheduled nothing is still a choice"];
+  let gi=0;
+  const targetSlots = s.freeSlots.length? s.freeSlots : s.actualFree;
+  for(const m of targetSlots.slice(0,6)){
+    const range=`${fmt(m)}–${fmt(m+state.slotMin)}`;
+    const d=deficits[0];
+    if(d && d.def>0){
+      sugList.push(`<li><span class="when">${range} · free</span>You're ${hoursLabel(d.def)} behind on <b>${esc(actById(d.id).name)}</b> — this slot is a natural place to catch up.</li>`);
+      d.def-=state.slotMin;
+      if(d.def<=0) deficits.shift();
+    } else {
+      sugList.push(`<li><span class="when">${range} · free</span>${generic[gi++%generic.length]}.</li>`);
+    }
+  }
+  if(!targetSlots.length && s.slots.length)
+    sugList.push(`<li>No free slots left — your day is fully accounted for. If it felt too packed, schedule an explicit buffer block next time.</li>`);
+  if(!s.slots.length) sugList.push("<li>Set your day range above to begin.</li>");
+  $("#sugs").innerHTML=sugList.join("");
+
+  /* side-by-side ledger */
+  let html="<thead><tr><th class='dim'>Time</th><th>Plan</th><th></th><th>Actual</th></tr></thead><tbody>";
+  for(const m of s.slots){
+    html+=`<tr><td class="time ${m%60===0?'hourmark':''}">${fmt(m)}</td>`
+        + tdCell(m,state.plan[m],false) + tdMatch(m) + tdCell(m,state.actual[m],false) + "</tr>";
+  }
+  $("#reviewGrid").innerHTML=html+"</tbody>";
+}
+
+/* ---------------- smart add (natural language reminders) ---------------- */
+/* Official NYSE full closures & 1pm early closes (source: NYSE Group calendar) */
+const MARKET_EVENTS=[
+ {d:"2026-01-01",n:"New Year's Day",t:"closed"},
+ {d:"2026-01-19",n:"MLK Jr. Day",t:"closed"},
+ {d:"2026-02-16",n:"Washington's Birthday",t:"closed"},
+ {d:"2026-04-03",n:"Good Friday",t:"closed"},
+ {d:"2026-05-25",n:"Memorial Day",t:"closed"},
+ {d:"2026-06-19",n:"Juneteenth",t:"closed"},
+ {d:"2026-07-03",n:"Independence Day (observed)",t:"closed"},
+ {d:"2026-09-07",n:"Labor Day",t:"closed"},
+ {d:"2026-11-26",n:"Thanksgiving",t:"closed"},
+ {d:"2026-11-27",n:"Day after Thanksgiving",t:"early"},
+ {d:"2026-12-24",n:"Christmas Eve",t:"early"},
+ {d:"2026-12-25",n:"Christmas",t:"closed"},
+ {d:"2027-01-01",n:"New Year's Day",t:"closed"},
+ {d:"2027-01-18",n:"MLK Jr. Day",t:"closed"},
+ {d:"2027-02-15",n:"Washington's Birthday",t:"closed"},
+ {d:"2027-03-26",n:"Good Friday",t:"closed"},
+ {d:"2027-05-31",n:"Memorial Day",t:"closed"},
+ {d:"2027-06-18",n:"Juneteenth (observed)",t:"closed"},
+ {d:"2027-07-05",n:"Independence Day (observed)",t:"closed"},
+ {d:"2027-09-06",n:"Labor Day",t:"closed"},
+ {d:"2027-11-25",n:"Thanksgiving",t:"closed"},
+ {d:"2027-11-26",n:"Day after Thanksgiving",t:"early"},
+ {d:"2027-12-24",n:"Christmas (observed)",t:"closed"},
+];
+const DOW={sunday:0,monday:1,tuesday:2,wednesday:3,thursday:4,friday:5,saturday:6};
+const NTH={first:1,"1st":1,second:2,"2nd":2,third:3,"3rd":3,fourth:4,"4th":4,last:-1};
+const NUMWORD={a:1,one:1,two:2,three:3,four:4,five:5,six:6,seven:7};
+const dtISO=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+function nthWeekdayISO(y,mo,dow,n){
+  const base=new Date(y,mo,1);            /* normalize month overflow (e.g. month 13 → Jan next year) */
+  y=base.getFullYear(); mo=base.getMonth();
+  if(n===-1){ const last=new Date(y,mo+1,0); return dtISO(new Date(y,mo,last.getDate()-((last.getDay()-dow+7)%7))); }
+  const day=1+((dow-base.getDay()+7)%7)+(n-1)*7;
+  const dt=new Date(y,mo,day);
+  return dt.getMonth()===mo ? dtISO(dt) : null;
+}
+function cleanTitle(src,removed){
+  let t=" "+src.toLowerCase()+" ";
+  removed.forEach(r=>{ t=t.replace(r," "); });
+  [/\bhelp me to\b/g,/\bhelp me\b/g,/\bplease\b/g,/\bcan you\b/g,/\bcould you\b/g,/\bgive me\b/g,
+   /\bremind me (to|about|of)\b/g,/\bremind me\b/g,/\badd\b/g,/\bcreate\b/g,/\bset\b/g,/\bme\b/g,
+   /\breminders? (of|for|to|about)\b/g,/\breminders?\b/g,/\bevery\b/g,/\beach\b/g,/\bweekdays?\b/g,
+   /\bor\b/g,/\bin\b/g,/\bon\b/g,/\bthe\b/g,/\ban?\b/g,/\bmy\b/g
+  ].forEach(f=>{ t=t.replace(f," "); });
+  t=t.replace(/\s+/g," ").trim().replace(/^[,.\-–]+|[,.\-–]+$/g,"").trim();
+  return t ? t.charAt(0).toUpperCase()+t.slice(1) : "";
+}
+function parseSmart(input){
+  const low=input.toLowerCase();
+  const today=todayISO();
+
+  /* --- pattern 1: US stock market closures / early closes --- */
+  if(/(stock\s*market|us\s*market|nyse|nasdaq)/.test(low)){
+    let off=0;
+    const om=low.match(/(\d+|one|two|three|four|five|six|seven|a)\s+(?:business\s+|trading\s+)?days?\s+before/);
+    if(om) off=NUMWORD[om[1]]||parseInt(om[1])||1;
+    else if(/\bday before\b/.test(low)) off=1;
+    const noEarly=low.replace(/early\s*clos\w*/g,"");
+    const wantsFull=/(clos|holiday)/.test(noEarly);
+    const wantsEarly=/early/.test(low);
+    const types=(wantsFull&&wantsEarly)||(!wantsFull&&!wantsEarly) ? ["closed","early"] : wantsEarly?["early"]:["closed"];
+    const items=[];
+    for(const ev of MARKET_EVENTS){
+      if(!types.includes(ev.t)) continue;
+      const remDate=off? addDaysISO(ev.d,-off) : ev.d;
+      if(remDate<today) continue;
+      const lead=off===0?"Today":off===1?"Tomorrow":`In ${off} days`;
+      const what=ev.t==="closed"?"market CLOSED":"market EARLY CLOSE (1pm ET)";
+      items.push({date:remDate, text:`${lead}: US ${what} — ${ev.n} (${prettyDate(ev.d)})`});
+    }
+    if(!items.length) return {ok:false,msg:"No upcoming market dates found in the built-in calendar (covers through Dec 2027)."};
+    const tdesc=types.length===2?"closures & early closes":types[0]==="early"?"early closes":"full closures";
+    return {ok:true, items,
+      seriesLabel:`US market ${tdesc}${off?` (${off}d before)`:""}`,
+      desc:`US stock market ${tdesc}, reminder ${off?off+" day"+(off>1?"s":"")+" before":"on"} each date · built-in NYSE calendar through Dec 2027 · ${items.length} reminders`};
+  }
+
+  /* --- pattern 2: first/second/third/fourth/last <weekday> of the month --- */
+  let m=low.match(/\b(first|1st|second|2nd|third|3rd|fourth|4th|last)\s+(sunday|monday|tuesday|wednesday|thursday|friday|saturday)s?\s+(?:of\s+)?(?:the\s+|every\s+|each\s+)?month/);
+  if(m){
+    const n=NTH[m[1]], dow=DOW[m[2]];
+    const items=[]; const now=new Date(today+"T12:00:00");
+    for(let k=0;k<13 && items.length<12;k++){
+      const iso=nthWeekdayISO(now.getFullYear(),now.getMonth()+k,dow,n);
+      if(iso && iso>=today) items.push({date:iso});
+    }
+    const title=cleanTitle(input,[new RegExp(m[0].replace(/[.*+?^${}()|[\]\\]/g,"\\$&"),"g")])||"Reminder";
+    items.forEach(it=>it.text=title);
+    return {ok:true, items, seriesLabel:title,
+      desc:`"${title}" every ${m[1]} ${m[2].charAt(0).toUpperCase()+m[2].slice(1)} of the month · next ${items.length} occurrences`};
+  }
+
+  /* --- pattern 3: every <N>th of the month --- */
+  m=low.match(/\bevery\s+(\d{1,2})(?:st|nd|rd|th)?\s+(?:day\s+)?(?:of\s+)?(?:the\s+|each\s+)?month/);
+  if(m){
+    const dayN=+m[1];
+    if(dayN>=1&&dayN<=31){
+      const items=[]; const now=new Date(today+"T12:00:00");
+      for(let k=0;k<13 && items.length<12;k++){
+        const y=now.getFullYear(), mo=now.getMonth()+k;
+        const lastDay=new Date(y,mo+1,0).getDate();
+        const iso=dtISO(new Date(y,mo,Math.min(dayN,lastDay)));
+        if(iso>=today) items.push({date:iso});
+      }
+      const title=cleanTitle(input,[new RegExp(m[0].replace(/[.*+?^${}()|[\]\\]/g,"\\$&"),"g")])||"Reminder";
+      items.forEach(it=>it.text=title);
+      return {ok:true, items, seriesLabel:title,
+        desc:`"${title}" on the ${dayN}${["th","st","nd","rd"][dayN%10>3||[11,12,13].includes(dayN%100)?0:dayN%10]} of every month · next ${items.length} occurrences`};
+    }
+  }
+
+  /* --- pattern 4: every <weekday> (weekly) --- */
+  m=low.match(/\bevery\s+(sunday|monday|tuesday|wednesday|thursday|friday|saturday)s?\b/);
+  if(m){
+    const dow=DOW[m[1]];
+    const now=new Date(today+"T12:00:00");
+    let first=addDaysISO(today,(dow-now.getDay()+7)%7);
+    const items=[];
+    for(let k=0;k<12;k++) items.push({date:addDaysISO(first,k*7)});
+    const title=cleanTitle(input,[new RegExp(m[0].replace(/[.*+?^${}()|[\]\\]/g,"\\$&"),"g")])||"Reminder";
+    items.forEach(it=>it.text=title);
+    return {ok:true, items, seriesLabel:title,
+      desc:`"${title}" every ${m[1].charAt(0).toUpperCase()+m[1].slice(1)} · next 12 weeks`};
+  }
+
+  /* --- pattern 5: single dates: tomorrow / today / on M/D --- */
+  if(/\btomorrow\b/.test(low)||/\btoday\b/.test(low)){
+    const iso=/\btomorrow\b/.test(low)? addDaysISO(today,1):today;
+    const title=cleanTitle(input,[/\btomorrow\b/g,/\btoday\b/g])||"Reminder";
+    return {ok:true, items:[{date:iso,text:title}], seriesLabel:null,
+      desc:`"${title}" on ${prettyDate(iso)}`};
+  }
+  m=low.match(/\b(?:on\s+)?(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?\b/);
+  if(m){
+    let y=m[3]? (+m[3]<100? 2000+ +m[3] : +m[3]) : +today.slice(0,4);
+    let iso=dtISO(new Date(y,+m[1]-1,+m[2]));
+    if(!m[3] && iso<today) iso=dtISO(new Date(y+1,+m[1]-1,+m[2]));  /* passed this year → next year */
+    const title=cleanTitle(input,[new RegExp(m[0].replace(/[.*+?^${}()|[\]\\]/g,"\\$&"),"g")])||"Reminder";
+    return {ok:true, items:[{date:iso,text:title}], seriesLabel:null,
+      desc:`"${title}" on ${prettyDate(iso)}`};
+  }
+
+  return {ok:false,msg:`Sorry, I couldn't work out a schedule from that. Try patterns like: "…one day before every US stock market close or early close", "…every first Monday of the month", "…every 15th of the month", "…every Friday", "…tomorrow", or "…on 8/15".`};
+}
+let smartPending=null;
+/* --- Hugging Face settings (kept separate from exports on purpose) --- */
+const HF_TOK_KEY="dayledger-hf-token", HF_MODEL_KEY="dayledger-hf-model";
+const HF_DEFAULT_MODEL="deepseek-ai/DeepSeek-V3-0324";
+function hfGet(k,def){ try{ return localStorage.getItem(k)||def; }catch(e){ return def; } }
+function hfSet(k,v){ try{ v? localStorage.setItem(k,v) : localStorage.removeItem(k); }catch(e){} }
+function updateAIStatus(){
+  const tok=hfGet(HF_TOK_KEY,""), model=hfGet(HF_MODEL_KEY,HF_DEFAULT_MODEL);
+  $("#aiStatus").textContent = tok
+    ? `AI parsing ON · ${model} · built-in patterns still run first`
+    : "AI parsing OFF — using built-in patterns only";
+}
+async function aiParse(text){
+  const token=hfGet(HF_TOK_KEY,""), model=hfGet(HF_MODEL_KEY,HF_DEFAULT_MODEL);
+  const today=todayISO();
+  const wd=new Date(today+"T12:00:00").toLocaleDateString("en-US",{weekday:"long"});
+  const prompt=`Today is ${wd}, ${today}. Convert this reminder request into JSON only, exactly this shape: {"title":"...","dates":["YYYY-MM-DD",...]}.
+Rules: every date must be ${today} or later; at most 24 dates; go at most 12 months ahead; sort ascending; "title" is the short reminder text with schedule words removed. Output only the JSON object, no markdown, no explanation.
+Request: ${text}`;
+  const ctl=new AbortController(); const to=setTimeout(()=>ctl.abort(),25000);
+  let r;
+  try{
+    r=await fetch("https://router.huggingface.co/v1/chat/completions",{
+      method:"POST", signal:ctl.signal,
+      headers:{"Authorization":"Bearer "+token,"Content-Type":"application/json"},
+      body:JSON.stringify({model, messages:[{role:"user",content:prompt}], max_tokens:700, temperature:0})
+    });
+  } finally { clearTimeout(to); }
+  if(!r.ok) throw new Error("HTTP "+r.status+(r.status===401?" — token invalid?":r.status===404?" — model unavailable, try another in AI settings":""));
+  const data=await r.json();
+  let raw=(((data.choices||[])[0]||{}).message||{}).content||"";
+  raw=raw.replace(/```json|```/g,"").trim();
+  const jm=raw.match(/\{[\s\S]*\}/);
+  if(!jm) throw new Error("model reply contained no JSON");
+  const obj=JSON.parse(jm[0]);
+  const dates=[...new Set((obj.dates||[]).filter(d=>/^\d{4}-\d{2}-\d{2}$/.test(d)&&d>=today))].sort().slice(0,24);
+  if(!dates.length) throw new Error("model returned no valid future dates");
+  const title=(typeof obj.title==="string"&&obj.title.trim()) ? obj.title.trim().slice(0,60) : "Reminder";
+  return {ok:true, items:dates.map(d=>({date:d,text:title})),
+    seriesLabel:dates.length>1?title:null,
+    desc:`"${title}" · ${dates.length} date${dates.length>1?"s":""} — double-check AI dates before adding`};
+}
+function showSmartPreview(res,srcLabel){
+  smartPending=res;
+  const box=$("#smartPreview");
+  const shown=res.items.slice(0,8);
+  box.style.display="";
+  box.innerHTML=`<div class="sm-box">
+    <div class="sm-desc">📅 ${esc(res.desc)}<span class="sm-src">${esc(srcLabel)}</span></div>
+    <div class="sm-dates">${shown.map(i=>`<span class="sm-date">${prettyDate(i.date)}</span>`).join("")}
+      ${res.items.length>8?`<span class="sm-more">…and ${res.items.length-8} more</span>`:""}</div>
+    <div class="sm-actions">
+      <button class="btn" id="smartConfirm">Add ${res.items.length} reminder${res.items.length>1?"s":""}</button>
+      <button class="btn ghost" id="smartCancel">Cancel</button>
+    </div></div>`;
+  $("#smartConfirm").onclick=()=>{
+    const sid=res.items.length>1? "s"+Date.now() : null;
+    for(const it of res.items){
+      state.reminders.push({id:remSeq++, date:it.date, end:it.date, text:it.text,
+        ...(sid?{series:sid, seriesLabel:res.seriesLabel||it.text}:{})});
+    }
+    smartPending=null;
+    $("#smartText").value=""; box.style.display="none";
+    renderReminders(); renderRemindAll(); scheduleSave();
+  };
+  $("#smartCancel").onclick=()=>{ smartPending=null; box.style.display="none"; };
+}
+function showSmartError(msg){
+  smartPending=null;
+  const box=$("#smartPreview");
+  box.style.display="";
+  box.innerHTML=`<div class="sm-box"><div class="sm-err">${esc(msg)}</div></div>`;
+}
+async function runSmart(){
+  const inp=$("#smartText"), btn=$("#smartBtn");
+  const text=inp.value.trim();
+  if(!text){ inp.focus(); return; }
+  const local=parseSmart(text);                       /* deterministic patterns first */
+  if(local.ok){ showSmartPreview(local,"built-in parser"); return; }
+  const tok=hfGet(HF_TOK_KEY,"");
+  if(!tok){
+    showSmartError(local.msg+" Tip: open AI settings below and add a free Hugging Face token for smarter parsing.");
+    return;
+  }
+  btn.disabled=true; const orig=btn.textContent; btn.textContent="Thinking…";
+  try{
+    const model=hfGet(HF_MODEL_KEY,HF_DEFAULT_MODEL);
+    const ai=await aiParse(text);
+    showSmartPreview(ai,"🤗 "+model.split("/").pop());
+  }catch(e){
+    showSmartError("AI parsing failed: "+(e.name==="AbortError"?"timed out":e.message)+". "+local.msg);
+  }finally{
+    btn.disabled=false; btn.textContent=orig;
+  }
+}
+$("#smartBtn").onclick=runSmart;
+$("#smartText").addEventListener("keydown",e=>{ if(e.key==="Enter") runSmart(); });
+/* AI settings wiring */
+$("#hfToken").value=hfGet(HF_TOK_KEY,"");
+$("#hfModel").value=hfGet(HF_MODEL_KEY,HF_DEFAULT_MODEL);
+$("#hfSave").onclick=()=>{
+  hfSet(HF_TOK_KEY,$("#hfToken").value.trim());
+  hfSet(HF_MODEL_KEY,$("#hfModel").value.trim()||HF_DEFAULT_MODEL);
+  updateAIStatus();
+  flashBtn($("#hfSave"),"Saved ✓");
+};
+updateAIStatus();
+
+/* ---------------- templates ---------------- */
+let tplSeq = 1;
+function flashBtn(btn,txt){
+  const o=btn.dataset.orig || btn.textContent;
+  btn.dataset.orig=o; btn.textContent=txt;
+  setTimeout(()=>{ btn.textContent=o; },1400);
+}
+function renderTplUI(){
+  const sel=$("#tplSelect");
+  const prev=sel.value;
+  sel.innerHTML = state.templates.length
+    ? state.templates.map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join("")
+    : `<option value="">No templates yet</option>`;
+  if(prev && [...sel.options].some(o=>o.value===prev)) sel.value=prev;
+  $("#applyTplBtn").disabled = !state.templates.length;
+  const list=$("#tplList");
+  list.innerHTML = state.templates.length
+    ? state.templates.map(t=>
+        `<div class="tplrow"><span class="txt">${esc(t.name)}</span>
+         <button class="mini" data-act="load" data-id="${t.id}" title="Load into editor">Edit</button>
+         <button class="mini del" data-act="del" data-id="${t.id}" aria-label="Delete template ${esc(t.name)}" title="Delete">×</button></div>`
+      ).join("")
+    : `<p class="empty-note">Saved templates appear here.</p>`;
+  list.querySelectorAll("button").forEach(b=>b.onclick=()=>{
+    const t=state.templates.find(x=>x.id===+b.dataset.id); if(!t) return;
+    if(b.dataset.act==="del"){
+      state.templates=state.templates.filter(x=>x.id!==t.id);
+      renderTplUI();
+      scheduleSave();
+    } else {                       /* load into the editor for tweaking */
+      state.tplWork=remap({...t.map}, t.startHour, t.slotMin);
+      $("#tplName").value=t.name;
+      renderEditGrid(); renderPalette();
+    }
+  });
+}
+function saveTemplate(){
+  const inp=$("#tplName"), name=inp.value.trim();
+  if(!name){ inp.focus(); return; }
+  if(!Object.keys(state.tplWork).length){ flashBtn($("#saveTplBtn"),"Empty!"); return; }
+  const data={ name, map:{...state.tplWork}, startHour:state.startHour, slotMin:state.slotMin };
+  const existing=state.templates.find(t=>t.name.toLowerCase()===name.toLowerCase());
+  if(existing) Object.assign(existing,data);        /* same name = overwrite */
+  else state.templates.push({id:tplSeq++, ...data});
+  flashBtn($("#saveTplBtn"),"Saved ✓");
+  renderTplUI();
+  scheduleSave();
+}
+$("#saveTplBtn").onclick=saveTemplate;
+$("#tplName").addEventListener("keydown",e=>{ if(e.key==="Enter") saveTemplate(); });
+$("#applyTplBtn").onclick=()=>{
+  const t=state.templates.find(x=>x.id===+$("#tplSelect").value);
+  if(!t) return;
+  state.plan = remap({...t.map}, t.startHour, t.slotMin);   /* adapts to current slot length */
+  flashBtn($("#applyTplBtn"),"Applied ✓");
+  renderEditGrid(); renderPalette();
+};
+
+/* ---------------- week view ---------------- */
+let weekMode="plan";
+let weekStart=null;   /* null = anchored on today */
+function addDaysISO(iso,n){
+  const d=new Date(iso+"T12:00:00"); d.setDate(d.getDate()+n);
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+}
+document.querySelectorAll(".wkmode .wkbtn").forEach(b=>{
+  b.onclick=()=>{
+    weekMode=b.dataset.mode;
+    document.querySelectorAll(".wkmode .wkbtn").forEach(x=>x.classList.toggle("active",x===b));
+    renderWeek();
+  };
+});
+$("#wkPrev").onclick =()=>{ weekStart=addDaysISO(weekStart||todayISO(),-7); renderWeek(); };
+$("#wkNext").onclick =()=>{ weekStart=addDaysISO(weekStart||todayISO(), 7); renderWeek(); };
+$("#wkToday").onclick=()=>{ weekStart=null; renderWeek(); };
+$("#wkDate").onchange=function(){
+  if(!this.value) return;
+  weekStart = this.value===todayISO() ? null : this.value;
+  renderWeek();
+};
+function renderWeek(){
+  const today=todayISO();
+  const start=weekStart||today;
+  $("#wkDate").value=start;
+  const dates=[0,1,2,3,4,5,6].map(i=>addDaysISO(start,i));
+  const modeTxt=weekMode==="plan"?"planned":"actual";
+  $("#weekTitle").textContent = start===today
+    ? `Next 7 days · ${modeTxt}`
+    : `${prettyDate(dates[0])} → ${prettyDate(dates[6])} · ${modeTxt}`;
+
+  let html="<thead><tr><th class='dim'>Time</th>";
+  for(const d of dates){
+    const rems=state.reminders.filter(r=>activeOn(r,d)).map(r=>r.text);
+    html+=`<th class="wkhead" data-d="${d}" title="Open ${prettyDate(d)}">
+      <span class="dow">${prettyDate(d)}</span>
+      ${d===today?'<span class="today-tag">TODAY</span>':''}
+      ${rems.length?`<span class="rems" title="${esc(rems.join(", "))}">📌 ${esc(rems.join(", "))}</span>`:''}
+    </th>`;
+  }
+  html+="</tr></thead><tbody>";
+
+  for(const m of slotStarts()){
+    html+=`<tr><td class="time ${m%60===0?'hourmark':''}">${fmt(m)}</td>`;
+    for(const d of dates){
+      const day=state.days[d];
+      const act=actById(day ? day[weekMode][m] : undefined);
+      html+= act
+        ? `<td><div class="wcell" style="background:${act.color};color:${textColorFor(act.color)}" title="${esc(act.name)} · ${fmt(m)}">${esc(act.name)}</div></td>`
+        : `<td><div class="wcell blank"></div></td>`;
+    }
+    html+="</tr>";
+  }
+  $("#weekGrid").innerHTML=html+"</tbody>";
+
+  /* click a day header to jump there */
+  $("#weekGrid").querySelectorAll(".wkhead").forEach(th=>{
+    th.onclick=()=>{
+      state.date=th.dataset.d;
+      $("#datePick").value=state.date;
+      state.tab = weekMode==="actual" ? "actual" : "plan";
+      document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("active",b.dataset.tab===state.tab));
+      renderAll();
+    };
+  });
+}
+
+/* ---------------- render root ---------------- */
+function renderAll(){
+  state.anchor=null; state.hoverM=null;   /* drop any half-finished range */
+  $("#remDate").value = state.date;       /* reminder dates default to the day you're viewing */
+  $("#remEndDate").value = state.date;
+  renderReminders();
+  const t=state.tab;
+  $("#remCard").style.display    = (t==="plan"||t==="actual") ? "" : "none";
+  $("#editView").style.display   = (t==="plan"||t==="actual"||t==="template") ? "" : "none";
+  $("#reviewView").style.display = t==="review" ? "" : "none";
+  $("#remindView").style.display = t==="remind" ? "" : "none";
+  $("#weekView").style.display   = t==="week" ? "" : "none";
+  if(t==="review") renderReview();
+  else if(t==="remind") renderRemindAll();
+  else if(t==="week") renderWeek();
+  else { renderEditGrid(); renderPalette(); }
+  scheduleSave();
+}
+
+/* ---------------- export / import ---------------- */
+$("#exportBtn").onclick=()=>{
+  const blob=new Blob([serialize()],{type:"application/json"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="dayledger-data.json";
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  flashBtn($("#exportBtn"),"Exported ✓");
+};
+$("#importBtn").onclick=()=>$("#importFile").click();
+$("#importFile").onchange=function(){
+  const f=this.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=()=>{
+    try{
+      if(applyData(JSON.parse(r.result))){
+        refreshControls();
+        renderAll();
+        flashBtn($("#importBtn"),"Imported ✓");
+      } else flashBtn($("#importBtn"),"Invalid file");
+    }catch(e){ flashBtn($("#importBtn"),"Invalid file"); }
+  };
+  r.readAsText(f);
+  this.value="";
+};
+$("#saveStatus").textContent = storageOK
+  ? "auto-saves to this browser"
+  : "auto-save unavailable here — use Export / Import";
+
+/* ---------------- cloud sync (optional — Firebase) ---------------- */
+/* Paste your Firebase web-app config below to enable cross-device sync
+   (console.firebase.google.com → Project settings → Your apps → Web app).
+   The config is NOT a secret — access is protected by Google sign-in +
+   Firestore security rules. Leave as null and the app stays fully local.
+   Cloud layout: users/{uid}/dayledger/{settings|reminders|templates} and
+   users/{uid}/dayledgerDays/{dateISO}; each doc is {j:<JSON string>,
+   updatedAt:<ms>} and newest timestamp wins per doc. */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBI3NU344WC1lgxNkjXyRWO1eauNncVmLE",
+  authDomain: "timetable-df244.firebaseapp.com",
+  projectId: "timetable-df244",
+  storageBucket: "timetable-df244.firebasestorage.app",
+  messagingSenderId: "917724008009",
+  appId: "1:917724008009:web:62fb9cddd934f681417998",
+  measurementId: "G-03ZD553EDC"
+};
+
+const SYNC_META_KEY="dayledger-sync-meta";
+const EMPTY_DAY='{"plan":{},"actual":{}}';
+let db=null, fbUser=null, syncReady=false, syncUnsubs=[];
+let localSnap={};          /* key -> JSON at last check; detects local edits */
+const pushCache={};        /* key -> JSON last pushed to / applied from cloud */
+let syncMeta={touched:{}}; /* key -> ms of last local edit (persisted) */
+try{ const m=localStorage.getItem(SYNC_META_KEY); const p=m&&JSON.parse(m); if(p&&p.touched) syncMeta=p; }catch(e){}
+function saveSyncMeta(){ try{ localStorage.setItem(SYNC_META_KEY, JSON.stringify(syncMeta)); }catch(e){} }
+function setSyncStatus(t){ $("#syncStatus").textContent=t; }
+
+/* state split into independently-synced sections ("day:<date>" per day) */
+function sectionJSON(){
+  const out={
+    settings: JSON.stringify({startHour:state.startHour, endHour:state.endHour, slotMin:state.slotMin,
+      activities:state.activities, seqs:{act:actSeq, rem:remSeq, tpl:tplSeq}}),
+    reminders: JSON.stringify({list:state.reminders}),
+    templates: JSON.stringify({list:state.templates, tplWork:state.tplWork})
+  };
+  for(const d of Object.keys(state.days)) out["day:"+d]=JSON.stringify(state.days[d]);
+  return out;
+}
+function applySection(key,data){
+  if(!data||typeof data!=="object") return;
+  if(key==="settings"){
+    if(Number.isFinite(+data.startHour)) state.startHour=+data.startHour;
+    if(Number.isFinite(+data.endHour)&&+data.endHour>state.startHour) state.endHour=+data.endHour;
+    if(Number.isFinite(+data.slotMin)&&+data.slotMin>=5) state.slotMin=+data.slotMin;
+    if(Array.isArray(data.activities)&&data.activities.length) state.activities=data.activities;
+    if(data.seqs){                    /* merge id counters upward, never back */
+      actSeq=Math.max(actSeq,+data.seqs.act||0);
+      remSeq=Math.max(remSeq,+data.seqs.rem||0);
+      tplSeq=Math.max(tplSeq,+data.seqs.tpl||0);
+    }
+    if(!actById(state.selected)&&state.activities.length) state.selected=state.activities[0].id;
+  } else if(key==="reminders"){
+    if(Array.isArray(data.list)) state.reminders=data.list;
+  } else if(key==="templates"){
+    if(Array.isArray(data.list)) state.templates=data.list;
+    if(data.tplWork&&typeof data.tplWork==="object") state.tplWork=data.tplWork;
+  } else if(key.startsWith("day:")){
+    state.days[key.slice(4)]={plan:data.plan||{}, actual:data.actual||{}};
+  }
+}
+function syncDocRef(key){
+  const base=db.collection("users").doc(fbUser.uid);
+  return key.startsWith("day:")
+    ? base.collection("dayledgerDays").doc(key.slice(4))
+    : base.collection("dayledger").doc(key);
+}
+/* days auto-created empty by merely viewing a date aren't worth syncing */
+const ghostDay=(key,json)=> key.startsWith("day:") && json===EMPTY_DAY;
+
+function noteLocalChanges(){
+  const now=Date.now(); let dirty=false;
+  for(const [key,json] of Object.entries(sectionJSON())){
+    if(localSnap[key]===json) continue;
+    if(ghostDay(key,json)&&localSnap[key]===undefined) continue;
+    localSnap[key]=json; syncMeta.touched[key]=now; dirty=true;
+  }
+  if(dirty) saveSyncMeta();
+}
+function cloudPush(){
+  if(!syncReady) return;
+  for(const [key,json] of Object.entries(sectionJSON())){
+    if(pushCache[key]===json) continue;
+    if(ghostDay(key,json)&&!syncMeta.touched[key]) continue;
+    pushCache[key]=json;
+    setSyncStatus("☁ saving…");
+    syncDocRef(key).set({j:json, updatedAt:syncMeta.touched[key]||Date.now()})
+      .then(()=>setSyncStatus("☁ synced"))
+      .catch(()=>{ delete pushCache[key]; setSyncStatus("⚠ sync error — retries on next change"); });
+  }
+}
+function onSnap(snap,prefix){
+  let changed=false;
+  snap.docChanges().forEach(ch=>{
+    if(ch.type==="removed") return;
+    const key=prefix+ch.doc.id, data=ch.doc.data();
+    if(!data||typeof data.j!=="string") return;
+    if(pushCache[key]===data.j) return;                          /* our own write echoed */
+    if((data.updatedAt||0) < (syncMeta.touched[key]||0)) return; /* local copy is newer */
+    let obj; try{ obj=JSON.parse(data.j); }catch(e){ return; }
+    applySection(key,obj);
+    pushCache[key]=data.j; localSnap[key]=data.j;
+    syncMeta.touched[key]=data.updatedAt||Date.now();
+    changed=true;
+  });
+  if(changed){
+    saveSyncMeta();
+    refreshControls();
+    renderAll();          /* also re-saves merged state locally */
+    setSyncStatus("☁ synced");
+  }
+}
+function startSync(){
+  setSyncStatus("☁ connecting…");
+  const base=db.collection("users").doc(fbUser.uid);
+  let g1=false, g2=false;
+  const ready=()=>{ if(g1&&g2&&!syncReady){ syncReady=true; cloudPush(); setSyncStatus("☁ synced"); } };
+  const err=e=>setSyncStatus("⚠ sync error: "+((e&&e.code)||(e&&e.message)||e));
+  /* wait for server-confirmed data (not just cache) before pushing local */
+  syncUnsubs.push(base.collection("dayledger").onSnapshot({includeMetadataChanges:true},
+    s=>{ onSnap(s,""); if(!s.metadata.fromCache){ g1=true; ready(); } }, err));
+  syncUnsubs.push(base.collection("dayledgerDays").onSnapshot({includeMetadataChanges:true},
+    s=>{ onSnap(s,"day:"); if(!s.metadata.fromCache){ g2=true; ready(); } }, err));
+}
+function stopSync(){
+  syncUnsubs.forEach(u=>u()); syncUnsubs=[]; syncReady=false;
+  for(const k of Object.keys(pushCache)) delete pushCache[k];
+}
+function signinErrMsg(e){
+  const c=(e&&e.code)||"";
+  if(c==="auth/popup-closed-by-user"||c==="auth/cancelled-popup-request") return "";
+  if(c==="auth/operation-not-supported-in-this-environment")
+    return "Google sign-in needs http(s) — open the hosted copy (GitHub Pages / localhost), not file://";
+  if(c==="auth/unauthorized-domain")
+    return "domain not authorized — Firebase console → Authentication → Settings → Authorized domains";
+  return "sign-in failed: "+(c||(e&&e.message)||"unknown error");
+}
+function initCloud(){
+  if(!FIREBASE_CONFIG) return;                       /* sync off: app stays as-is */
+  if(typeof firebase==="undefined"){ setSyncStatus("☁ sync off — Firebase SDK didn't load"); return; }
+  firebase.initializeApp(FIREBASE_CONFIG);
+  db=firebase.firestore();
+  db.enablePersistence({synchronizeTabs:true}).catch(e=>{}); /* offline queue; optional */
+  const btn=$("#syncBtn");
+  btn.style.display="";
+  firebase.auth().getRedirectResult().catch(e=>{ const m=signinErrMsg(e); if(m) setSyncStatus("⚠ "+m); });
+  firebase.auth().onAuthStateChanged(u=>{
+    fbUser=u; stopSync();
+    if(u){
+      btn.textContent="Sign out ("+((u.displayName||u.email||"account").split(" ")[0])+")";
+      startSync();
+    } else {
+      btn.textContent="☁ Sign in to sync";
+      setSyncStatus("☁ local only — not signed in");
+    }
+  });
+  btn.onclick=()=>{
+    if(fbUser){ firebase.auth().signOut(); return; }
+    const prov=new firebase.auth.GoogleAuthProvider();
+    firebase.auth().signInWithPopup(prov).catch(e=>{
+      if(e&&e.code==="auth/popup-blocked"){ firebase.auth().signInWithRedirect(prov); return; }
+      const m=signinErrMsg(e); if(m) setSyncStatus("⚠ "+m);
+    });
+  };
+}
+
+restore();
+initControls();
+renderAll();
+localSnap=sectionJSON();   /* baseline — only edits after this count as local changes */
+initCloud();
+
+/* PWA: register the service worker (skipped on file:// where SWs can't run) */
+if("serviceWorker" in navigator && location.protocol!=="file:"){
+  navigator.serviceWorker.register("sw.js").catch(e=>{});
+}
+</script>
+</body>
+</html>

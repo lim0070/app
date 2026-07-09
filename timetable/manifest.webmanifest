@@ -1,0 +1,14 @@
+{
+  "name": "DayLedger — Plan vs Reality",
+  "short_name": "DayLedger",
+  "description": "Plan your day, log what really happened, and see the gap.",
+  "start_url": "./timetable.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#EEF2F7",
+  "theme_color": "#16233B",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

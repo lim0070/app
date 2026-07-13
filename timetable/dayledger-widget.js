@@ -14,7 +14,7 @@ const CFG = {
   password: "PASTE_WIDGET_PASSWORD_HERE",
   apiKey: "AIzaSyBI3NU344WC1lgxNkjXyRWO1eauNncVmLE",  // Firebase web config (public, not a secret)
   projectId: "timetable-df244",
-  appUrl: "https://lim0070.github.io/timetable/timetable/timetable.html",
+  appUrl: "https://lim0070.github.io/app/timetable/timetable.html",
   show: "plan"                          // "plan" or "actual"
 };
 

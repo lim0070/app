@@ -436,7 +436,7 @@ footer{margin-top:34px;padding-top:16px;border-top:1px solid var(--line)}
   <main id="shopView" style="display:none">
     <div class="store-bar" id="storeBar"></div>
     <div class="shop-add">
-      <input id="shopInput" type="text" maxlength="40" placeholder="Add something to buy… e.g. Milk" autocomplete="off" aria-label="Add shopping item">
+      <input id="shopInput" type="text" maxlength="300" placeholder="Add item(s)… e.g. fish oil, ashwagandha and 2x pine nuts" autocomplete="off" aria-label="Add shopping items">
       <button class="btn" id="shopAddBtn" type="button">Add</button>
     </div>
     <p class="shop-hint" id="shopSuggestHint" style="display:none"></p>
@@ -990,8 +990,97 @@ function addShop(name){
 function toggleShop(id){const s=state.shopping.find(x=>x.id===id);if(!s)return;s.done=!s.done;render();}
 function rmShop(id){state.shopping=state.shopping.filter(x=>x.id!==id);render();}
 $("#clearBought").onclick=()=>{state.shopping=state.shopping.filter(s=>!(s.store===state.curStore&&s.done));render();};
-$("#shopAddBtn").onclick=()=>{addShop($("#shopInput").value);$("#shopInput").value="";$("#shopInput").focus();};
-$("#shopInput").addEventListener("keydown",e=>{if(e.key==="Enter"){addShop($("#shopInput").value);$("#shopInput").value="";}});
+/* ---- smart multi-add: split "a, b and 2x c" locally; messy text falls back
+   to Chrome's on-device AI (if ready) then the optional HF token ---- */
+function parseQty(raw){
+  let name=raw.trim(), qty=1, m;
+  if((m=name.match(/^(\d{1,3})\s*[x×]\s*(.+)$/i)) || (m=name.match(/^(\d{1,3})\s+(.+)$/))){ qty=+m[1]||1; name=m[2].trim(); }
+  else if((m=name.match(/^(.+?)\s*[x×]\s*(\d{1,3})$/i))){ name=m[1].trim(); qty=+m[2]||1; }
+  return {name:name.slice(0,48), qty:Math.max(1,Math.min(qty,99))};
+}
+function splitShopping(text){
+  const parts=text.split(/\r?\n|[,;•·]/g)
+    .flatMap(p=>String(p||"").split(/\s+(?:and|&|\+)\s+/i))
+    .map(s=>s.trim().replace(/^[-*]\s+/,""))
+    .filter(Boolean);
+  const seen=new Set(), out=[];
+  for(const p of parts){ const k=p.toLowerCase(); if(!seen.has(k)){ seen.add(k); out.push(p); } }
+  return out;
+}
+function addShopMany(names){
+  let added=0;
+  for(const raw of names){
+    const {name,qty}=parseQty(raw);
+    if(!name) continue;
+    if(state.shopping.some(s=>s.store===state.curStore&&!s.done&&s.name.toLowerCase()===name.toLowerCase())) continue;
+    state.shopping.push({id:seq++,store:state.curStore,name,done:false,qty,cat:guessCat(name)});
+    added++;
+  }
+  render();
+  return added;
+}
+/* Chrome built-in on-device model (Gemini Nano). Used only when already
+   downloaded & ready — never triggers a model download. Returns null if
+   unavailable so callers can fall through. */
+async function aiShopExtract(text){
+  const LM=window.LanguageModel||(window.ai&&window.ai.languageModel);
+  if(!LM) return null;
+  try{
+    let ready=false;
+    if(LM.availability) ready=(await LM.availability())==="available";
+    else if(LM.capabilities) ready=(await LM.capabilities()).available==="readily";
+    if(!ready) return null;
+    const s=await LM.create();
+    const out=await s.prompt("Extract the shopping list items from the text below. Reply with ONLY a JSON array of item name strings (keep quantities like \"2x\" in the string), no explanation.\n\nText:\n"+text);
+    if(s.destroy) s.destroy();
+    const m=String(out).match(/\[[\s\S]*\]/); if(!m) return null;
+    const arr=JSON.parse(m[0]).filter(x=>typeof x==="string"&&x.trim()).map(x=>x.trim().slice(0,60));
+    return arr.length?arr:null;
+  }catch(e){ return null; }
+}
+async function hfShopExtract(text){
+  const token=hfGet(HF_TOK,""),model=hfGet(HF_MOD,HF_DEF);
+  const prompt=`Extract the shopping list items from the text below. Return JSON only: {"items":["...","..."]}. One entry per item, keep quantities, no commentary.\n\nText:\n${text}`;
+  const ctl=new AbortController();const to=setTimeout(()=>ctl.abort(),25000);
+  let r;
+  try{
+    r=await fetch("https://router.huggingface.co/v1/chat/completions",{
+      method:"POST",signal:ctl.signal,
+      headers:{"Authorization":"Bearer "+token,"Content-Type":"application/json"},
+      body:JSON.stringify({model,messages:[{role:"user",content:prompt}],max_tokens:500,temperature:0})
+    });
+  }finally{clearTimeout(to);}
+  if(!r.ok)throw new Error("HTTP "+r.status);
+  const data=await r.json();
+  let raw=(((data.choices||[])[0]||{}).message||{}).content||"";
+  raw=raw.replace(/```json|```/g,"").trim();
+  const jm=raw.match(/\{[\s\S]*\}/);if(!jm)throw new Error("no JSON in reply");
+  const list=(JSON.parse(jm[0]).items||[]).filter(x=>typeof x==="string"&&x.trim()).map(x=>x.trim().slice(0,60));
+  return list.length?list:null;
+}
+async function smartShopAdd(){
+  const inp=$("#shopInput"), btn=$("#shopAddBtn");
+  const text=inp.value.trim();
+  if(!text){inp.focus();return;}
+  const parts=splitShopping(text);
+  if(parts.length>1 || text.length<=60){        /* clean list → instant local add */
+    const n=addShopMany(parts);
+    inp.value=""; inp.focus();
+    $("#shopViewCount").textContent=`Added ${n} item${n===1?"":"s"}`+(n<parts.length?` (${parts.length-n} already listed)`:"");
+    return;
+  }
+  btn.disabled=true; const o=btn.textContent; btn.textContent="…";
+  try{
+    let list=await aiShopExtract(text), src=list?"on-device AI":null;
+    if(!list&&hfGet(HF_TOK,"")){ try{ list=await hfShopExtract(text); src="AI"; }catch(e){} }
+    if(!list){ list=parts; src=null; }
+    const n=addShopMany(list);
+    inp.value=""; inp.focus();
+    $("#shopViewCount").textContent=`Added ${n} item${n===1?"":"s"}`+(src?` · ${src}`:"");
+  }finally{ btn.disabled=false; btn.textContent=o; }
+}
+$("#shopAddBtn").onclick=smartShopAdd;
+$("#shopInput").addEventListener("keydown",e=>{if(e.key==="Enter")smartShopAdd();});
 function stockIt(id){
   const s=state.shopping.find(x=>x.id===id);if(!s)return;
   state.shopping=state.shopping.filter(x=>x.id!==id);

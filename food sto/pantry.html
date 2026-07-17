@@ -287,6 +287,15 @@ header{margin-bottom:20px}
 .loc-choose button.sel{border-color:var(--ink);box-shadow:3px 3px 0 var(--ink);transform:translate(-1px,-1px)}
 .loc-choose button:focus-visible{outline:3px solid var(--leaf);outline-offset:1px}
 
+/* smart-add preview (mirrors DayLedger's reminder smart add) */
+.sm-box{margin:10px 0;border:1.5px dashed var(--ink);border-radius:10px;padding:12px 14px;background:#fff}
+.sm-desc{font-size:14px;font-weight:600;margin-bottom:10px}
+.sm-items{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.sm-item{font-family:var(--mono);font-size:12px;padding:4px 10px;border:1px solid var(--line);border-radius:999px;background:var(--cream)}
+.sm-actions{display:flex;gap:8px}
+.sm-src{font-family:var(--mono);font-size:10px;color:var(--ink-soft);border:1px solid var(--line);border-radius:999px;padding:2px 8px;margin-left:8px;white-space:nowrap}
+.sm-err{color:var(--tomato);font-size:13px;line-height:1.5}
+
 /* photo picker */
 .photo-pick{display:flex;gap:14px;align-items:flex-start}
 .photo-prev{
@@ -439,6 +448,7 @@ footer{margin-top:34px;padding-top:16px;border-top:1px solid var(--line)}
       <input id="shopInput" type="text" maxlength="300" placeholder="Add item(s)… e.g. fish oil, ashwagandha and 2x pine nuts" autocomplete="off" aria-label="Add shopping items">
       <button class="btn" id="shopAddBtn" type="button">Add</button>
     </div>
+    <div id="shopSmartPreview" style="display:none"></div>
     <p class="shop-hint" id="shopSuggestHint" style="display:none"></p>
     <div id="shopSuggest"></div>
     <div class="toolbar" style="margin-top:6px">
@@ -1007,17 +1017,47 @@ function splitShopping(text){
   for(const p of parts){ const k=p.toLowerCase(); if(!seen.has(k)){ seen.add(k); out.push(p); } }
   return out;
 }
-function addShopMany(names){
+function addShopManyParsed(parsed){
   let added=0;
-  for(const raw of names){
-    const {name,qty}=parseQty(raw);
-    if(!name) continue;
-    if(state.shopping.some(s=>s.store===state.curStore&&!s.done&&s.name.toLowerCase()===name.toLowerCase())) continue;
-    state.shopping.push({id:seq++,store:state.curStore,name,done:false,qty,cat:guessCat(name)});
+  for(const p of parsed){
+    if(!p.name) continue;
+    if(state.shopping.some(s=>s.store===state.curStore&&!s.done&&s.name.toLowerCase()===p.name.toLowerCase())) continue;
+    state.shopping.push({id:seq++,store:state.curStore,name:p.name,done:false,qty:p.qty,cat:guessCat(p.name)});
     added++;
   }
   render();
   return added;
+}
+/* preview-and-confirm, mirroring DayLedger's reminder smart add */
+let shopPending=null;
+function showShopPreview(items,srcLabel){
+  const parsed=items.map(parseQty).filter(p=>p.name);
+  const box=$("#shopSmartPreview");
+  if(!parsed.length){ showShopError("Nothing recognizable in that text."); return; }
+  shopPending=parsed;
+  box.style.display="";
+  box.innerHTML=`<div class="sm-box">
+    <div class="sm-desc">🛒 ${parsed.length} item${parsed.length>1?"s":""} → ${esc(state.curStore)}<span class="sm-src">${esc(srcLabel)}</span></div>
+    <div class="sm-items">${parsed.map(p=>
+      `<span class="sm-item">${esc(p.name)}${p.qty>1?` ×${p.qty}`:""} · ${CAT_EMOJI[guessCat(p.name)]||"🛒"} ${esc(guessCat(p.name))}</span>`).join("")}</div>
+    <div class="sm-actions">
+      <button class="btn" id="shopSmartConfirm" type="button">Add ${parsed.length} item${parsed.length>1?"s":""}</button>
+      <button class="btn ghost" id="shopSmartCancel" type="button">Cancel</button>
+    </div></div>`;
+  $("#shopSmartConfirm").onclick=()=>{
+    const n=addShopManyParsed(shopPending||[]);
+    shopPending=null;
+    $("#shopInput").value="";
+    $("#shopSmartPreview").style.display="none";
+    $("#shopViewCount").textContent=`Added ${n} item${n===1?"":"s"}`+(n<parsed.length?` (${parsed.length-n} already listed)`:"");
+  };
+  $("#shopSmartCancel").onclick=()=>{ shopPending=null; box.style.display="none"; };
+}
+function showShopError(msg){
+  shopPending=null;
+  const box=$("#shopSmartPreview");
+  box.style.display="";
+  box.innerHTML=`<div class="sm-box"><div class="sm-err">${esc(msg)}</div></div>`;
 }
 /* Chrome built-in on-device model (Gemini Nano). Used only when already
    downloaded & ready — never triggers a model download. Returns null if
@@ -1063,20 +1103,27 @@ async function smartShopAdd(){
   const text=inp.value.trim();
   if(!text){inp.focus();return;}
   const parts=splitShopping(text);
-  if(parts.length>1 || text.length<=60){        /* clean list → instant local add */
-    const n=addShopMany(parts);
+  if(parts.length===1 && text.length<=48){       /* plain single item → add instantly, as before */
+    const p=parseQty(parts[0]);
+    const n=addShopManyParsed([p]);
     inp.value=""; inp.focus();
-    $("#shopViewCount").textContent=`Added ${n} item${n===1?"":"s"}`+(n<parts.length?` (${parts.length-n} already listed)`:"");
+    $("#shopViewCount").textContent = n ? `Added ${p.name}` : "Already on the list";
     return;
   }
+  if(parts.length>1){                            /* clean list → preview & confirm */
+    showShopPreview(parts,"built-in parser");
+    return;
+  }
+  /* one long messy blob → on-device AI, then HF token, then give up honestly */
   btn.disabled=true; const o=btn.textContent; btn.textContent="…";
   try{
-    let list=await aiShopExtract(text), src=list?"on-device AI":null;
-    if(!list&&hfGet(HF_TOK,"")){ try{ list=await hfShopExtract(text); src="AI"; }catch(e){} }
-    if(!list){ list=parts; src=null; }
-    const n=addShopMany(list);
-    inp.value=""; inp.focus();
-    $("#shopViewCount").textContent=`Added ${n} item${n===1?"":"s"}`+(src?` · ${src}`:"");
+    let list=await aiShopExtract(text);
+    let src="on-device AI";
+    if(!list&&hfGet(HF_TOK,"")){
+      try{ list=await hfShopExtract(text); src="🤗 "+hfGet(HF_MOD,HF_DEF).split("/").pop(); }catch(e){}
+    }
+    if(list) showShopPreview(list,src);
+    else showShopError("Couldn't split that text. Tip: separate items with commas — or add a free Hugging Face token (Recipes → ＋ New recipe → AI settings) for smarter parsing.");
   }finally{ btn.disabled=false; btn.textContent=o; }
 }
 $("#shopAddBtn").onclick=smartShopAdd;

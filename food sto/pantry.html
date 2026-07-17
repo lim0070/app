@@ -291,7 +291,8 @@ header{margin-bottom:20px}
 .sm-box{margin:10px 0;border:1.5px dashed var(--ink);border-radius:10px;padding:12px 14px;background:#fff}
 .sm-desc{font-size:14px;font-weight:600;margin-bottom:10px}
 .sm-items{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
-.sm-item{font-family:var(--mono);font-size:12px;padding:4px 10px;border:1px solid var(--line);border-radius:999px;background:var(--cream)}
+.sm-item{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:12px;padding:4px 6px 4px 10px;border:1px solid var(--line);border-radius:999px;background:var(--cream)}
+.sm-item select{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--ink);padding:2px 4px;cursor:pointer;max-width:150px}
 .sm-actions{display:flex;gap:8px}
 .sm-src{font-family:var(--mono);font-size:10px;color:var(--ink-soft);border:1px solid var(--line);border-radius:999px;padding:2px 8px;margin-left:8px;white-space:nowrap}
 .sm-err{color:var(--tomato);font-size:13px;line-height:1.5}
@@ -1022,28 +1023,35 @@ function addShopManyParsed(parsed){
   for(const p of parsed){
     if(!p.name) continue;
     if(state.shopping.some(s=>s.store===state.curStore&&!s.done&&s.name.toLowerCase()===p.name.toLowerCase())) continue;
-    state.shopping.push({id:seq++,store:state.curStore,name:p.name,done:false,qty:p.qty,cat:guessCat(p.name)});
+    state.shopping.push({id:seq++,store:state.curStore,name:p.name,done:false,qty:p.qty||1,cat:p.cat||guessCat(p.name)});
     added++;
   }
   render();
   return added;
 }
-/* preview-and-confirm, mirroring DayLedger's reminder smart add */
+/* preview-and-confirm, mirroring DayLedger's reminder smart add; every item
+   gets a category dropdown so a wrong guess is one tap to fix */
 let shopPending=null;
 function showShopPreview(items,srcLabel){
-  const parsed=items.map(parseQty).filter(p=>p.name);
+  const parsed=normShopItems(items);
   const box=$("#shopSmartPreview");
   if(!parsed.length){ showShopError("Nothing recognizable in that text."); return; }
   shopPending=parsed;
   box.style.display="";
   box.innerHTML=`<div class="sm-box">
     <div class="sm-desc">🛒 ${parsed.length} item${parsed.length>1?"s":""} → ${esc(state.curStore)}<span class="sm-src">${esc(srcLabel)}</span></div>
-    <div class="sm-items">${parsed.map(p=>
-      `<span class="sm-item">${esc(p.name)}${p.qty>1?` ×${p.qty}`:""} · ${CAT_EMOJI[guessCat(p.name)]||"🛒"} ${esc(guessCat(p.name))}</span>`).join("")}</div>
+    <div class="sm-items">${parsed.map((p,i)=>
+      `<span class="sm-item">${esc(p.name)}${p.qty>1?` ×${p.qty}`:""}
+        <select data-i="${i}" aria-label="Category for ${esc(p.name)}">${CATS.map(c=>
+          `<option value="${c.key}"${c.key===p.cat?" selected":""}>${c.emoji} ${c.key}</option>`).join("")}</select>
+      </span>`).join("")}</div>
     <div class="sm-actions">
       <button class="btn" id="shopSmartConfirm" type="button">Add ${parsed.length} item${parsed.length>1?"s":""}</button>
       <button class="btn ghost" id="shopSmartCancel" type="button">Cancel</button>
     </div></div>`;
+  box.querySelectorAll("select[data-i]").forEach(sel=>{
+    sel.onchange=()=>{ const p=shopPending&&shopPending[+sel.dataset.i]; if(p) p.cat=sel.value; };
+  });
   $("#shopSmartConfirm").onclick=()=>{
     const n=addShopManyParsed(shopPending||[]);
     shopPending=null;
@@ -1059,6 +1067,20 @@ function showShopError(msg){
   box.style.display="";
   box.innerHTML=`<div class="sm-box"><div class="sm-err">${esc(msg)}</div></div>`;
 }
+/* one prompt for both models: split items AND pick a category */
+function shopPrompt(text){
+  return 'You organize grocery shopping lists. Allowed categories: '+CATS.map(c=>c.key).join(", ")
+    +'. Supplements, vitamins, fish oil, protein powder and medicines belong in "Other". '
+    +'Extract every shopping item from the text below, whatever its format. Reply with ONLY a JSON array like '
+    +'[{"n":"item name","q":2,"c":"Pantry"}] where q is the quantity (default 1) and c is one allowed category. '
+    +'No explanation, no markdown.\n\nText:\n'+text;
+}
+function parseShopJSON(raw){
+  const m=String(raw).replace(/```json|```/g,"").match(/\[[\s\S]*\]/);
+  if(!m) return null;
+  try{ const arr=JSON.parse(m[0]); return Array.isArray(arr)&&arr.length?arr:null; }
+  catch(e){ return null; }
+}
 /* Chrome built-in on-device model (Gemini Nano). Used only when already
    downloaded & ready — never triggers a model download. Returns null if
    unavailable so callers can fall through. */
@@ -1071,50 +1093,55 @@ async function aiShopExtract(text){
     else if(LM.capabilities) ready=(await LM.capabilities()).available==="readily";
     if(!ready) return null;
     const s=await LM.create();
-    const out=await s.prompt("Extract the shopping list items from the text below. Reply with ONLY a JSON array of item name strings (keep quantities like \"2x\" in the string), no explanation.\n\nText:\n"+text);
+    const out=await s.prompt(shopPrompt(text));
     if(s.destroy) s.destroy();
-    const m=String(out).match(/\[[\s\S]*\]/); if(!m) return null;
-    const arr=JSON.parse(m[0]).filter(x=>typeof x==="string"&&x.trim()).map(x=>x.trim().slice(0,60));
-    return arr.length?arr:null;
+    return parseShopJSON(out);
   }catch(e){ return null; }
 }
 async function hfShopExtract(text){
   const token=hfGet(HF_TOK,""),model=hfGet(HF_MOD,HF_DEF);
-  const prompt=`Extract the shopping list items from the text below. Return JSON only: {"items":["...","..."]}. One entry per item, keep quantities, no commentary.\n\nText:\n${text}`;
   const ctl=new AbortController();const to=setTimeout(()=>ctl.abort(),25000);
   let r;
   try{
     r=await fetch("https://router.huggingface.co/v1/chat/completions",{
       method:"POST",signal:ctl.signal,
       headers:{"Authorization":"Bearer "+token,"Content-Type":"application/json"},
-      body:JSON.stringify({model,messages:[{role:"user",content:prompt}],max_tokens:500,temperature:0})
+      body:JSON.stringify({model,messages:[{role:"user",content:shopPrompt(text)}],max_tokens:600,temperature:0})
     });
   }finally{clearTimeout(to);}
   if(!r.ok)throw new Error("HTTP "+r.status);
   const data=await r.json();
-  let raw=(((data.choices||[])[0]||{}).message||{}).content||"";
-  raw=raw.replace(/```json|```/g,"").trim();
-  const jm=raw.match(/\{[\s\S]*\}/);if(!jm)throw new Error("no JSON in reply");
-  const list=(JSON.parse(jm[0]).items||[]).filter(x=>typeof x==="string"&&x.trim()).map(x=>x.trim().slice(0,60));
-  return list.length?list:null;
+  const raw=(((data.choices||[])[0]||{}).message||{}).content||"";
+  return parseShopJSON(raw);
 }
+/* normalize strings or {n,q,c} objects into {name, qty, cat}; dedupe */
+function normShopItems(list){
+  const valid=new Set(CATS.map(c=>c.key));
+  const out=[], seen=new Set();
+  for(const it of list){
+    let name="", qty=1, cat=null;
+    if(typeof it==="string"){ const p=parseQty(it); name=p.name; qty=p.qty; }
+    else if(it&&typeof it==="object"){
+      name=String(it.n||it.name||"").trim().slice(0,48);
+      qty=Math.max(1,Math.min(Math.round(+(it.q||it.qty)||1),99));
+      const c=String(it.c||it.cat||"").trim();
+      if(valid.has(c)) cat=c;
+    }
+    if(!name) continue;
+    const k=name.toLowerCase();
+    if(seen.has(k)) continue;
+    seen.add(k);
+    out.push({name, qty, cat:cat||guessCat(name)});
+  }
+  return out;
+}
+/* LLM-first: any input pattern goes to the on-device model (then the HF
+   token) for splitting AND categorizing; the plain splitter is the fallback
+   when no AI is available. Everything lands in the preview for confirmation. */
 async function smartShopAdd(){
   const inp=$("#shopInput"), btn=$("#shopAddBtn");
   const text=inp.value.trim();
   if(!text){inp.focus();return;}
-  const parts=splitShopping(text);
-  if(parts.length===1 && text.length<=48){       /* plain single item → add instantly, as before */
-    const p=parseQty(parts[0]);
-    const n=addShopManyParsed([p]);
-    inp.value=""; inp.focus();
-    $("#shopViewCount").textContent = n ? `Added ${p.name}` : "Already on the list";
-    return;
-  }
-  if(parts.length>1){                            /* clean list → preview & confirm */
-    showShopPreview(parts,"built-in parser");
-    return;
-  }
-  /* one long messy blob → on-device AI, then HF token, then give up honestly */
   btn.disabled=true; const o=btn.textContent; btn.textContent="…";
   try{
     let list=await aiShopExtract(text);
@@ -1122,7 +1149,16 @@ async function smartShopAdd(){
     if(!list&&hfGet(HF_TOK,"")){
       try{ list=await hfShopExtract(text); src="🤗 "+hfGet(HF_MOD,HF_DEF).split("/").pop(); }catch(e){}
     }
-    if(list) showShopPreview(list,src);
+    if(list){ showShopPreview(list,src); return; }
+    /* no AI available → deterministic splitter, categories still editable in the preview */
+    const parts=splitShopping(text);
+    if(parts.length===1 && text.length<=48){
+      const p=parseQty(parts[0]);
+      const n=addShopManyParsed([{name:p.name,qty:p.qty,cat:guessCat(p.name)}]);
+      inp.value=""; inp.focus();
+      $("#shopViewCount").textContent = n ? `Added ${p.name}` : "Already on the list";
+    }
+    else if(parts.length>1) showShopPreview(parts,"built-in parser");
     else showShopError("Couldn't split that text. Tip: separate items with commas — or add a free Hugging Face token (Recipes → ＋ New recipe → AI settings) for smarter parsing.");
   }finally{ btn.disabled=false; btn.textContent=o; }
 }

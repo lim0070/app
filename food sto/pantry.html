@@ -293,9 +293,18 @@ header{margin-bottom:20px}
 .sm-items{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
 .sm-item{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:12px;padding:4px 6px 4px 10px;border:1px solid var(--line);border-radius:999px;background:var(--cream)}
 .sm-item select{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--ink);padding:2px 4px;cursor:pointer;max-width:150px}
+.sm-item input[type=number]{width:46px;font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--ink);padding:2px 4px;text-align:center}
 .sm-actions{display:flex;gap:8px}
 .sm-src{font-family:var(--mono);font-size:10px;color:var(--ink-soft);border:1px solid var(--line);border-radius:999px;padding:2px 8px;margin-left:8px;white-space:nowrap}
 .sm-err{color:var(--tomato);font-size:13px;line-height:1.5}
+
+/* settings — category manager */
+.cat-row{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.cat-row .cat-emoji{width:52px;text-align:center;font-size:16px;padding:8px 4px;border:1.5px solid var(--line);border-radius:10px;background:#fff}
+.cat-row .cat-name{flex:1;min-width:0;padding:8px 10px;border:1.5px solid var(--line);border-radius:10px;font-family:var(--body);font-size:14px;background:#fff;color:var(--ink)}
+.cat-row .cat-name:disabled{opacity:.55}
+.cat-row .x{border:none;background:transparent;color:var(--tomato);font-size:15px;cursor:pointer;padding:4px 8px;border-radius:6px;flex-shrink:0}
+.cat-row .x:hover{background:rgba(199,64,46,.12)}
 
 /* photo picker */
 .photo-pick{display:flex;gap:14px;align-items:flex-start}
@@ -360,6 +369,10 @@ footer{margin-top:34px;padding-top:16px;border-top:1px solid var(--line)}
       <button class="loc new" data-loc="add">
         <span class="ic">＋</span>
         <span class="lbl"><b>Add item</b></span>
+      </button>
+      <button class="loc settings" data-loc="settings">
+        <span class="ic">⚙️</span>
+        <span class="lbl"><b>Settings</b></span>
       </button>
     </div>
   </header>
@@ -513,6 +526,25 @@ footer{margin-top:34px;padding-top:16px;border-top:1px solid var(--line)}
     </div>
   </main>
 
+  <!-- SETTINGS view -->
+  <main id="settingsView" style="display:none">
+    <div class="form-card" style="max-width:600px">
+      <div class="form-h">
+        <h2>🏷️ Categories</h2>
+        <p>Rename, remove or add the categories used to group your items and shopping lists. The smart-add AI uses this list too.</p>
+      </div>
+      <div class="form-b">
+        <div id="catRows"></div>
+        <button class="btn ghost sm" id="catAddRow" type="button">＋ Add category</button>
+        <div style="margin-top:14px;display:flex;gap:10px;align-items:center">
+          <button class="btn" id="catSave" type="button">Save categories</button>
+          <span class="count" id="catStatus"></span>
+        </div>
+        <p class="count" style="margin-top:10px">"Other" is always kept — removing a category moves its items there. Renames update existing items everywhere, and changes sync to your other devices.</p>
+      </div>
+    </div>
+  </main>
+
   <footer>
     <div class="databar">
       <button class="btn ghost" id="exportBtn" type="button">⬇ Export</button>
@@ -553,7 +585,7 @@ const state={
 let seq=1;
 
 /* ---------- categories ---------- */
-const CATS=[
+let CATS=[
   {key:"Produce",   emoji:"🥬"},
   {key:"Dairy & eggs",emoji:"🥚"},
   {key:"Meat & fish",emoji:"🍖"},
@@ -565,8 +597,21 @@ const CATS=[
   {key:"Household", emoji:"🧻"},
   {key:"Other",     emoji:"🛒"},
 ];
-const CAT_EMOJI=Object.fromEntries(CATS.map(c=>[c.key,c.emoji]));
-const CAT_ORDER=Object.fromEntries(CATS.map((c,i)=>[c.key,i]));
+let CAT_EMOJI={}, CAT_ORDER={};
+function rebuildCatMaps(){
+  CAT_EMOJI=Object.fromEntries(CATS.map(c=>[c.key,c.emoji]));
+  CAT_ORDER=Object.fromEntries(CATS.map((c,i)=>[c.key,i]));
+}
+rebuildCatMaps();
+/* replace the category list (from restore/import/cloud) after validating it */
+function applyCats(arr){
+  if(!Array.isArray(arr)||!arr.length)return;
+  if(!arr.every(c=>c&&typeof c.key==="string"&&c.key.trim()))return;
+  CATS=arr.map(c=>({key:String(c.key).trim().slice(0,18),emoji:String(c.emoji||"🛒").slice(0,4)}));
+  if(!CATS.some(c=>c.key==="Other"))CATS.push({key:"Other",emoji:"🛒"});
+  rebuildCatMaps();
+  populateCatSelect();
+}
 /* keyword guesser so users rarely need to set category manually */
 const CAT_HINTS={
   "Produce":["apple","banana","lettuce","tomato","onion","garlic","potato","carrot","spinach","pepper","broccoli","cucumber","lemon","lime","berr","grape","avocado","herb","salad","mushroom","celery","kale","orange","fruit","veg"],
@@ -584,17 +629,18 @@ function guessCat(name){
   /* check specific/compound categories before broad produce so "orange juice"→Drinks, "toilet paper"→Household */
   const order=["Household","Drinks","Frozen","Snacks","Bakery","Meat & fish","Dairy & eggs","Pantry","Produce"];
   for(const key of order){
+    if(!(key in CAT_ORDER))continue;   /* category removed by the user */
     const hints=CAT_HINTS[key]; if(!hints)continue;
     if(hints.some(h=>n.includes(h)))return key;
   }
-  return "Other";
+  return "Other" in CAT_ORDER ? "Other" : (CATS[0]?CATS[0].key:"Other");
 }
 
 /* ---------- persistence ---------- */
 const KEY="larder-v1";
 let storageOK=false;
 try{localStorage.setItem("__l","1");localStorage.removeItem("__l");storageOK=true;}catch(e){}
-function serialize(){return JSON.stringify({v:1,items:state.items,shopping:state.shopping,recipes:state.recipes,stores:state.stores,curStore:state.curStore,seq});}
+function serialize(){return JSON.stringify({v:1,items:state.items,shopping:state.shopping,recipes:state.recipes,stores:state.stores,curStore:state.curStore,seq,cats:CATS});}
 function save(){
   if(storageOK){
     try{localStorage.setItem(KEY,serialize());pulse();}catch(e){
@@ -620,6 +666,7 @@ function restore(){
       if(Array.isArray(d.recipes))state.recipes=d.recipes;
       if(d.curStore)state.curStore=d.curStore;
       if(d.seq)seq=d.seq;
+      applyCats(d.cats);
       migrateStores();
       /* backfill categories on items/shopping saved before this version */
       state.items.forEach(i=>{if(!i.cat)i.cat=guessCat(i.name);});
@@ -652,7 +699,12 @@ function prettyDate(iso){return new Date(iso+"T12:00:00").toLocaleDateString(und
 
 /* ---------- navigation ---------- */
 /* fill category dropdown once */
-$("#fCat").innerHTML=CATS.map(c=>`<option value="${c.key}">${c.emoji} ${c.key}</option>`).join("");
+function populateCatSelect(){
+  const sel=$("#fCat"), prev=sel.value;
+  sel.innerHTML=CATS.map(c=>`<option value="${c.key}">${c.emoji} ${c.key}</option>`).join("");
+  if(prev&&[...sel.options].some(o=>o.value===prev))sel.value=prev;
+}
+populateCatSelect();
 document.querySelectorAll(".loc").forEach(b=>{
   b.onclick=()=>{
     const l=b.dataset.loc;
@@ -674,10 +726,13 @@ function render(){
   const inv=(state.loc==="fridge"||state.loc==="shelf");
   const shop=state.loc==="shop";
   const rec=state.loc==="recipes";
+  const cfg=state.loc==="settings";
   $("#inventoryView").style.display=inv?"":"none";
   $("#shopView").style.display=shop?"":"none";
   $("#recipesView").style.display=rec?"":"none";
   $("#createView").style.display=(state.loc==="add")?"":"none";
+  $("#settingsView").style.display=cfg?"":"none";
+  if(cfg)renderSettings();
   $("#fridgeCount").textContent=count("fridge");
   $("#shelfCount").textContent=count("shelf");
   const toBuy=state.shopping.filter(s=>!s.done).length;
@@ -1041,7 +1096,8 @@ function showShopPreview(items,srcLabel){
   box.innerHTML=`<div class="sm-box">
     <div class="sm-desc">🛒 ${parsed.length} item${parsed.length>1?"s":""} → ${esc(state.curStore)}<span class="sm-src">${esc(srcLabel)}</span></div>
     <div class="sm-items">${parsed.map((p,i)=>
-      `<span class="sm-item">${esc(p.name)}${p.qty>1?` ×${p.qty}`:""}
+      `<span class="sm-item">${esc(p.name)}
+        <input type="number" data-q="${i}" min="1" max="99" value="${p.qty}" aria-label="Quantity for ${esc(p.name)}">
         <select data-i="${i}" aria-label="Category for ${esc(p.name)}">${CATS.map(c=>
           `<option value="${c.key}"${c.key===p.cat?" selected":""}>${c.emoji} ${c.key}</option>`).join("")}</select>
       </span>`).join("")}</div>
@@ -1051,6 +1107,13 @@ function showShopPreview(items,srcLabel){
     </div></div>`;
   box.querySelectorAll("select[data-i]").forEach(sel=>{
     sel.onchange=()=>{ const p=shopPending&&shopPending[+sel.dataset.i]; if(p) p.cat=sel.value; };
+  });
+  box.querySelectorAll("input[data-q]").forEach(q=>{
+    q.onchange=()=>{
+      const p=shopPending&&shopPending[+q.dataset.q]; if(!p) return;
+      p.qty=Math.max(1,Math.min(Math.round(+q.value)||1,99));
+      q.value=p.qty;
+    };
   });
   $("#shopSmartConfirm").onclick=()=>{
     const n=addShopManyParsed(shopPending||[]);
@@ -1083,8 +1146,8 @@ function parseShopJSON(raw){
 }
 /* Chrome built-in on-device model (Gemini Nano). Used only when already
    downloaded & ready — never triggers a model download. Returns null if
-   unavailable so callers can fall through. */
-async function aiShopExtract(text){
+   unavailable so callers can fall through. Shared by shopping & recipes. */
+async function nanoAsk(prompt){
   const LM=window.LanguageModel||(window.ai&&window.ai.languageModel);
   if(!LM) return null;
   try{
@@ -1093,9 +1156,23 @@ async function aiShopExtract(text){
     else if(LM.capabilities) ready=(await LM.capabilities()).available==="readily";
     if(!ready) return null;
     const s=await LM.create();
-    const out=await s.prompt(shopPrompt(text));
+    const out=await s.prompt(prompt);
     if(s.destroy) s.destroy();
-    return parseShopJSON(out);
+    return String(out);
+  }catch(e){ return null; }
+}
+async function aiShopExtract(text){
+  const out=await nanoAsk(shopPrompt(text));
+  return out?parseShopJSON(out):null;
+}
+async function aiIngExtract(text){
+  const out=await nanoAsk("Extract the ingredient list from the text below. Reply with ONLY a JSON array of ingredient strings — keep quantities, drop section headers and cooking steps. No explanation, no markdown.\n\nText:\n"+text);
+  if(!out) return null;
+  const m=out.replace(/```json|```/g,"").match(/\[[\s\S]*\]/);
+  if(!m) return null;
+  try{
+    const arr=JSON.parse(m[0]).filter(x=>typeof x==="string"&&x.trim()).map(x=>x.trim().slice(0,60));
+    return arr.length?arr:null;
   }catch(e){ return null; }
 }
 async function hfShopExtract(text){
@@ -1164,6 +1241,63 @@ async function smartShopAdd(){
 }
 $("#shopAddBtn").onclick=smartShopAdd;
 $("#shopInput").addEventListener("keydown",e=>{if(e.key==="Enter")smartShopAdd();});
+
+/* ---------- settings: category manager ---------- */
+function catRowHTML(key,emoji){
+  const locked = key==="Other";
+  return `<div class="cat-row" data-orig="${esc(key)}">
+    <input class="cat-emoji" maxlength="4" value="${esc(emoji)}" aria-label="Category emoji">
+    <input class="cat-name" maxlength="18" value="${esc(key)}"${locked?" disabled":""} placeholder="Category name…" aria-label="Category name">
+    ${locked?`<span class="count">always kept</span>`
+            :`<button class="x" data-delrow type="button" title="Remove — its items move to Other">✕</button>`}
+  </div>`;
+}
+function renderSettings(){
+  $("#catRows").innerHTML=CATS.map(c=>catRowHTML(c.key,c.emoji)).join("");
+  wireCatRows();
+}
+function wireCatRows(){
+  $("#catRows").querySelectorAll("[data-delrow]").forEach(b=>{
+    b.onclick=()=>b.closest(".cat-row").remove();
+  });
+}
+$("#catAddRow").onclick=()=>{
+  const div=document.createElement("div");
+  div.innerHTML=catRowHTML("","🛒");
+  const row=div.firstElementChild;
+  row.dataset.orig="";                       /* empty orig = brand new */
+  $("#catRows").appendChild(row);
+  wireCatRows();
+  row.querySelector(".cat-name").focus();
+};
+$("#catSave").onclick=()=>{
+  const rows=[...$("#catRows").querySelectorAll(".cat-row")];
+  const list=[], renames={}, seen=new Set();
+  for(const r of rows){
+    const orig=r.dataset.orig;
+    const emoji=(r.querySelector(".cat-emoji").value.trim()||"🛒").slice(0,4);
+    let name=r.querySelector(".cat-name").value.trim().slice(0,18);
+    if(orig==="Other") name="Other";
+    if(!name) continue;                      /* empty new rows are just skipped */
+    const k=name.toLowerCase();
+    if(seen.has(k)){ $("#catStatus").textContent="⚠ duplicate: "+name; return; }
+    seen.add(k);
+    list.push({key:name,emoji});
+    if(orig && orig!==name) renames[orig]=name;
+  }
+  if(!list.some(c=>c.key==="Other")) list.push({key:"Other",emoji:"🛒"});
+  const kept=new Set(list.map(c=>c.key));
+  const fix=c=>{ const n=renames[c]||c||"Other"; return kept.has(n)?n:"Other"; };
+  state.items.forEach(i=>{ i.cat=fix(i.cat); });
+  state.shopping.forEach(s=>{ s.cat=fix(s.cat); });
+  CATS=list;
+  rebuildCatMaps();
+  populateCatSelect();
+  render();
+  $("#catStatus").textContent="Saved ✓";
+  clearTimeout($("#catSave")._t);
+  $("#catSave")._t=setTimeout(()=>{$("#catStatus").textContent="";},1600);
+};
 function stockIt(id){
   const s=state.shopping.find(x=>x.id===id);if(!s)return;
   state.shopping=state.shopping.filter(x=>x.id!==id);
@@ -1343,25 +1477,30 @@ async function runParse(){
   const status=$("#pasteStatus"), btn=$("#parseBtn");
   if(!text){$("#pasteBox").focus();return;}
   const local=parseIngredientsLocal(text);
-  const token=hfGet(HF_TOK,"");
-  /* use local if it found a clean multi-line list, OR if there's no token to fall back on */
-  if((local.length>=2 && local.length>=text.split(/\r?\n/).filter(l=>l.trim()).length*0.6) || !token){
+  const clean = local.length>=2 && local.length>=text.split(/\r?\n/).filter(l=>l.trim()).length*0.6;
+  if(clean){                                   /* tidy multi-line list → instant */
     const n=addExtracted(local);
-    status.textContent=`Added ${n} ingredient${n===1?"":"s"}`+(token?"":" · tip: add AI for messy blocks");
+    status.textContent=`Added ${n} ingredient${n===1?"":"s"}`;
     if(!$("#rName").value.trim())$("#rName").focus();
     $("#pasteBox").value="";
     return;
   }
-  /* messy text + token present → AI */
-  btn.disabled=true;const o=btn.textContent;btn.textContent="Extracting…";status.textContent="asking AI…";
+  /* messy text → on-device AI first, then the HF token, then basic parsing */
+  btn.disabled=true;const o=btn.textContent;btn.textContent="Extracting…";status.textContent="parsing…";
   try{
-    const list=await hfExtract(text);
-    const n=addExtracted(list);
-    status.textContent=`AI added ${n} ingredient${n===1?"":"s"} — check them`;
-    $("#pasteBox").value="";
-  }catch(e){
-    const n=addExtracted(local);
-    status.textContent=`AI failed (${e.name==="AbortError"?"timeout":e.message}). Added ${n} by basic parsing.`;
+    let list=await aiIngExtract(text), src="on-device AI", err="";
+    if(!list&&hfGet(HF_TOK,"")){
+      try{ list=await hfExtract(text); src="AI"; }
+      catch(e){ err=`AI failed (${e.name==="AbortError"?"timeout":e.message}). `; }
+    }
+    if(list){
+      const n=addExtracted(list);
+      status.textContent=`${src} added ${n} ingredient${n===1?"":"s"} — check them`;
+      $("#pasteBox").value="";
+    }else{
+      const n=addExtracted(local);
+      status.textContent=err+`Added ${n} by basic parsing`+(hfGet(HF_TOK,"")?"":" · tip: add AI for messy blocks");
+    }
   }finally{btn.disabled=false;btn.textContent=o;}
 }
 $("#parseBtn").onclick=runParse;
@@ -1417,7 +1556,9 @@ $("#importFile").onchange=function(){
         state.recipes=Array.isArray(d.recipes)?d.recipes:[];
         state.stores=(Array.isArray(d.stores)&&d.stores.length)?d.stores:["General"];
         state.curStore=d.curStore||state.stores[0];
-        if(d.seq)seq=d.seq;migrateStores();
+        if(d.seq)seq=d.seq;
+        applyCats(d.cats);
+        migrateStores();
         state.items.forEach(i=>{if(!i.cat)i.cat=guessCat(i.name);});
         state.shopping.forEach(s=>{if(!s.cat)s.cat=guessCat(s.name);if(!s.qty)s.qty=1;});
         state.loc="fridge";render();
@@ -1458,7 +1599,7 @@ function setSyncStatus(t){$("#syncStatus").textContent=t;}
 
 function sectionJSON(){
   const out={
-    misc: JSON.stringify({stores:state.stores, curStore:state.curStore, seq}),
+    misc: JSON.stringify({stores:state.stores, curStore:state.curStore, seq, cats:CATS}),
     shopping: JSON.stringify({list:state.shopping}),
     recipes: JSON.stringify({list:state.recipes})
   };
@@ -1471,6 +1612,7 @@ function applySection(key,data){
     if(Array.isArray(data.stores)&&data.stores.length)state.stores=data.stores;
     if(data.curStore)state.curStore=data.curStore;
     seq=Math.max(seq,+data.seq||0);       /* merge id counter upward, never back */
+    applyCats(data.cats);
     migrateStores();
   }else if(key==="shopping"){
     if(Array.isArray(data.list))state.shopping=data.list;

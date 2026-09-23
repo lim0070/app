@@ -1,0 +1,1965 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0A0D18">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="AniTrack">
+<title>追番系统 · AniTrack</title>
+<style>
+:root{
+  --ink:#0A0D18; --panel:#12172A; --panel-2:#181F38; --line:rgba(148,163,216,.14);
+  --tx:#EAEDFA; --mut:#8A93B8; --red:#FF4D5E; --gold:#FFC94D; --cyan:#5EE1FF;
+  --disp:'Avenir Next','Outfit','Trebuchet MS',system-ui,-apple-system,sans-serif;
+  --mono:'SF Mono','JetBrains Mono',ui-monospace,Consolas,monospace;
+  --g-watching:#3ED164; --g-completed:#5B8DEF; --g-onhold:#F5C84C; --g-dropped:#F26D6D; --g-ptw:#9AA3BF;
+}
+*{box-sizing:border-box;margin:0}
+html{color-scheme:dark}
+body{min-height:100vh;background:
+  radial-gradient(900px 420px at 85% -10%, rgba(94,225,255,.07), transparent 60%),
+  radial-gradient(700px 380px at -10% 0%, rgba(255,77,94,.06), transparent 55%),
+  var(--ink);
+  color:var(--tx);font-family:var(--disp);padding:20px clamp(14px,3vw,36px) 46px}
+
+/* ---------- header ---------- */
+.top{display:flex;justify-content:space-between;align-items:flex-end;gap:14px;padding-bottom:16px;flex-wrap:wrap}
+.brand-cn{font-size:clamp(26px,4vw,36px);font-weight:800;letter-spacing:.06em;display:block;line-height:1}
+.brand-sub{font-family:var(--mono);font-size:11px;color:var(--mut);letter-spacing:.22em}
+.top-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.onair{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:11px;font-weight:700;
+  letter-spacing:.18em;color:var(--red);border:1px solid rgba(255,77,94,.4);border-radius:999px;padding:5px 11px;
+  background:rgba(255,77,94,.08);white-space:nowrap}
+.lamp{width:7px;height:7px;border-radius:50%;background:var(--red);box-shadow:0 0 8px var(--red);animation:pulse 1.6s infinite;flex:none}
+@keyframes pulse{50%{opacity:.35;box-shadow:0 0 2px var(--red)}}
+
+/* ---------- global search ---------- */
+.gsearch{position:relative}
+.gsearch input{background:var(--panel);border:1px solid var(--line);color:var(--tx);border-radius:10px;
+  padding:9px 13px;font-family:var(--disp);font-size:13px;outline:none;width:min(300px,68vw)}
+.gsearch input:focus{border-color:var(--cyan)}
+.gdrop{position:absolute;top:calc(100% + 6px);right:0;width:min(380px,86vw);background:var(--panel-2);
+  border:1px solid var(--line);border-radius:14px;z-index:40;overflow:hidden;box-shadow:0 14px 44px rgba(0,0,0,.55)}
+.gitem{display:flex;gap:10px;align-items:center;padding:9px 11px;cursor:pointer;border-top:1px solid var(--line)}
+.gitem:first-child{border-top:0}
+.gitem:hover{background:rgba(94,225,255,.07)}
+.gitem img{width:34px;height:46px;object-fit:cover;border-radius:5px;background:#222;flex:none}
+.gitem .gi-t{font-size:12.5px;font-weight:600;line-height:1.3}
+.gitem .gi-m{font-family:var(--mono);font-size:10px;color:var(--mut);margin-top:2px}
+.gitem .gi-add{margin-left:auto}
+.gnote{padding:11px;font-size:12px;color:var(--mut);text-align:center}
+.giok{font-family:var(--mono);font-size:10px;font-weight:700;color:var(--g-watching);white-space:nowrap}
+
+/* ---------- stats ---------- */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--line);border-radius:14px;
+  background:linear-gradient(180deg,var(--panel-2),var(--panel));overflow:hidden;margin-bottom:18px}
+.stat{padding:14px 16px;display:flex;align-items:baseline;gap:10px;border-left:1px solid var(--line)}
+.stat:first-child{border-left:0}
+.stat b{font-family:var(--mono);font-size:clamp(20px,2.6vw,30px);font-weight:700}
+.stat span{font-size:12px;color:var(--mut);line-height:1.25;display:flex;flex-direction:column}
+.stat i{font-style:normal;opacity:.65;font-size:11px}
+
+/* ---------- tabs ---------- */
+.tabs{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap}
+.tab{background:var(--panel);border:1px solid var(--line);color:var(--mut);border-radius:11px;
+  padding:9px 16px;cursor:pointer;display:flex;flex-direction:column;align-items:flex-start;line-height:1.2;
+  font-family:var(--disp);transition:.18s}
+.tab-cn{font-weight:700;font-size:15px}
+.tab-en{font-family:var(--mono);font-size:10px;letter-spacing:.16em}
+.tab.on{color:var(--tx);border-color:rgba(94,225,255,.5);background:linear-gradient(180deg,rgba(94,225,255,.12),rgba(94,225,255,.03))}
+.tab:hover{color:var(--tx)}
+
+/* ---------- banner ---------- */
+.banner{border:1px solid rgba(255,77,94,.4);background:rgba(255,77,94,.07);color:#FFB3BA;border-radius:12px;
+  padding:11px 14px;font-size:13px;margin-bottom:16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.banner button{margin-left:auto}
+
+/* ---------- toolbar ---------- */
+.toolbar{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.pills{display:flex;gap:6px;flex-wrap:wrap}
+.pill{--pc:var(--cyan);font-family:var(--disp);font-size:12.5px;font-weight:600;color:var(--mut);
+  background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:6px 12px;cursor:pointer;transition:.15s}
+.pill em{font-style:normal;font-family:var(--mono);font-size:11px;opacity:.75;margin-left:3px}
+.pill.on{color:#0B0E1A;background:var(--pc);border-color:var(--pc)}
+.pill:hover{color:var(--tx)} .pill.on:hover{color:#0B0E1A}
+.tools{display:flex;gap:8px;flex-wrap:wrap}
+input.lsearch,select{background:var(--panel);border:1px solid var(--line);color:var(--tx);
+  border-radius:10px;padding:8px 12px;font-family:var(--disp);font-size:13px;outline:none}
+input.lsearch:focus,select:focus{border-color:var(--cyan)}
+input.lsearch{width:180px}
+
+/* ---------- cards ---------- */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden;cursor:pointer;
+  transition:transform .18s,border-color .18s;display:flex;flex-direction:column}
+.card:hover{transform:translateY(-3px);border-color:rgba(94,225,255,.45)}
+.cwrap{position:relative}
+.cover{aspect-ratio:3/4;position:relative;overflow:hidden;display:flex;align-items:flex-end;justify-content:flex-end;
+  background:linear-gradient(152deg,#1b2540 12%,#31406e 130%)}
+.cover img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.cover .glyph{position:relative;font-size:88px;font-weight:800;color:rgba(255,255,255,.16);line-height:1;
+  margin:0 -6px -14px 0;user-select:none}
+.cover .scan{position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(0,0,0,.13) 0 1px,transparent 1px 4px);
+  mix-blend-mode:overlay;pointer-events:none;z-index:2}
+.slotchip{position:absolute;left:7px;top:7px;z-index:3;font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.08em;
+  color:#fff;background:rgba(6,9,20,.62);border:1px solid rgba(255,255,255,.18);border-radius:6px;padding:2px 6px;backdrop-filter:blur(3px)}
+.progbadge{position:absolute;right:7px;bottom:7px;z-index:3;font-family:var(--mono);font-size:10.5px;font-weight:700;
+  color:#fff;background:rgba(6,9,20,.72);border-radius:6px;padding:2px 7px}
+.scorechip{position:absolute;right:7px;top:7px;z-index:3;font-family:var(--mono);font-size:10.5px;font-weight:700;
+  color:var(--gold);background:rgba(6,9,20,.72);border-radius:6px;padding:2px 7px}
+.newbadge{position:absolute;left:7px;bottom:7px;z-index:3;display:inline-flex;align-items:center;gap:5px;
+  font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.1em;color:#fff;
+  background:rgba(255,77,94,.9);border-radius:6px;padding:3px 7px}
+.newbadge .lamp{background:#fff;box-shadow:0 0 6px #fff;width:6px;height:6px}
+.cdchip{position:absolute;left:7px;top:7px;z-index:3;font-family:var(--mono);font-size:9.5px;font-weight:700;
+  letter-spacing:.06em;color:var(--cyan);background:rgba(6,9,20,.78);border:1px solid rgba(94,225,255,.35);
+  border-radius:6px;padding:2px 6px;backdrop-filter:blur(3px)}
+.cdinline{font-family:var(--mono);font-size:9.5px;font-weight:700;color:var(--cyan);margin-left:5px;white-space:nowrap}
+.behindbadge{position:absolute;left:7px;bottom:7px;z-index:3;display:inline-flex;align-items:center;gap:5px;
+  font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.06em;color:#0B0E1A;
+  background:rgba(255,201,77,.94);border-radius:6px;padding:3px 7px}
+.behindbadge .lamp{background:#0B0E1A;box-shadow:none;width:5px;height:5px;animation:none}
+.contbadge{position:absolute;left:7px;bottom:7px;z-index:3;font-family:var(--mono);font-size:9.5px;font-weight:700;
+  letter-spacing:.1em;color:#0B0E1A;background:rgba(255,201,77,.92);border-radius:6px;padding:3px 7px}
+.cbody{padding:10px 11px 12px;display:flex;flex-direction:column;flex:1}
+.ctitle{font-size:13.5px;font-weight:700;line-height:1.3;max-height:2.6em;overflow:hidden;margin-bottom:3px}
+.cnative{font-size:10.5px;color:var(--mut);line-height:1.35;margin-bottom:8px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.bar{height:4px;border-radius:99px;background:rgba(255,255,255,.09);overflow:hidden;margin-bottom:9px}
+.bar i{display:block;height:100%;border-radius:99px;transition:width .25s}
+.cfoot{display:flex;justify-content:space-between;align-items:center;gap:6px;margin-top:auto}
+.stag{font-size:11px;font-weight:700;letter-spacing:.04em}
+.fnote{font-family:var(--mono);font-size:10px;color:var(--mut)}
+.genres{font-size:11px;color:var(--mut);margin-bottom:9px}
+.plus{font-family:var(--mono);font-weight:700;font-size:12px;color:#0B0E1A;background:var(--cyan);
+  border:none;border-radius:8px;padding:5px 12px;cursor:pointer;transition:.15s}
+.plus:hover{filter:brightness(1.12)}
+.plus.wide{background:transparent;color:var(--cyan);border:1px solid rgba(94,225,255,.5)}
+.plus.wide:hover{background:rgba(94,225,255,.12)}
+.trackedtag{font-size:11.5px;font-weight:700}
+
+/* ---------- schedule ---------- */
+.weekhead{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.weekhead h2{font-size:18px;font-weight:800}
+.weekhead .fnote{font-size:10.5px}
+.week{display:grid;grid-template-columns:repeat(7,minmax(152px,1fr));gap:10px;overflow-x:auto;padding-bottom:6px}
+.day{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:10px;min-width:152px}
+.day.today{border-color:rgba(255,77,94,.55);background:linear-gradient(180deg,rgba(255,77,94,.09),var(--panel) 42%)}
+.dayhead{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.dayen{font-family:var(--mono);font-weight:700;font-size:12px;letter-spacing:.14em}
+.daycn{font-size:11.5px;color:var(--mut)}
+.slot{display:flex;align-items:center;gap:7px;padding:7px 8px;border-radius:9px;margin-bottom:5px;
+  background:rgba(255,255,255,.028);border:1px solid transparent;cursor:pointer;transition:.15s}
+.slot:hover{border-color:var(--line)}
+.slot.tracked{background:rgba(94,225,255,.06);border-color:rgba(94,225,255,.18)}
+.slot.empty{color:var(--mut);font-size:11px;cursor:default;justify-content:center;background:none}
+.stime{font-family:var(--mono);font-size:10px;color:var(--mut);flex:none}
+.smain{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.smain .sname{flex:none}   /* flex:1 inside a column box would collapse its height */
+.cdline{font-family:var(--mono);font-size:9.5px;font-weight:700;color:var(--cyan);white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+.sname{font-size:12px;font-weight:600;line-height:1.25;flex:1;overflow:hidden;display:-webkit-box;
+  -webkit-line-clamp:2;-webkit-box-orient:vertical}
+.sside{display:flex;align-items:center;gap:6px}
+.dot{width:7px;height:7px;border-radius:50%;flex:none}
+.mini{font-family:var(--mono);font-size:10.5px;font-weight:700;border-radius:6px;border:none;cursor:pointer;
+  padding:3px 7px;background:var(--cyan);color:#0B0E1A}
+.mini.ghost{background:transparent;color:var(--mut);border:1px solid var(--line)}
+.mini.ghost:hover{color:var(--tx);border-color:var(--cyan)}
+
+/* ---------- up next ---------- */
+.upsec{font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;color:var(--mut);margin:16px 0 8px}
+.uplist{display:flex;flex-direction:column;gap:8px}
+.uprow{display:flex;gap:12px;align-items:center;background:var(--panel);border:1px solid var(--line);
+  border-radius:12px;padding:10px 12px;cursor:pointer;transition:border-color .15s,transform .15s}
+.uprow:hover{border-color:rgba(94,225,255,.45);transform:translateX(2px)}
+.uprow.soon{opacity:.72}
+.upcover{width:44px;height:60px;flex:none;border-radius:7px;overflow:hidden;background:linear-gradient(152deg,#1b2540,#31406e)}
+.upcover img{width:100%;height:100%;object-fit:cover}
+.upmain{flex:1;min-width:0}
+.uptitle{font-size:13.5px;font-weight:700;line-height:1.3;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.upmeta{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:5px 0 7px}
+.upn{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--gold)}
+.upn i{font-style:normal;font-size:10px;color:var(--mut);font-weight:600}
+.uprow .bar{margin-bottom:0}
+.uprow .plus{flex:none;padding:8px 15px;font-size:13px}
+@media (max-width:560px){ .upcover{width:36px;height:50px} }
+
+/* ---------- calendar (weekly timetable) ---------- */
+.calwrap{overflow-x:auto;padding-bottom:6px}
+.cal{display:grid;grid-template-columns:52px repeat(7,minmax(122px,1fr));gap:4px;min-width:920px}
+.chead{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.12em;color:var(--mut);
+  padding:8px 6px;text-align:center;border-bottom:1px solid var(--line)}
+.chead.today{color:var(--red);border-bottom-color:rgba(255,77,94,.5)}
+.chead .cn{display:block;font-family:var(--disp);font-weight:600;font-size:10.5px;letter-spacing:0;opacity:.8}
+.ctime{font-family:var(--mono);font-size:10.5px;color:var(--mut);padding:8px 6px 0;text-align:right}
+.ccell{background:rgba(255,255,255,.02);border-radius:8px;padding:3px;min-height:36px;display:flex;flex-direction:column;gap:3px}
+.ccell.today{background:rgba(255,77,94,.05)}
+.cslot{background:var(--panel);border:1px solid var(--line);border-radius:7px;padding:5px 7px;cursor:pointer;transition:.15s}
+.cslot:hover{border-color:rgba(94,225,255,.45)}
+.cslot.tracked{background:rgba(94,225,255,.08);border-color:rgba(94,225,255,.3)}
+.cslot .ct{font-size:11px;font-weight:600;line-height:1.25;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.cslot .cm{font-family:var(--mono);font-size:9.5px;color:var(--mut);margin-top:3px;display:flex;gap:5px;align-items:center}
+.cslot.up{opacity:.72;border-style:dashed}
+.cslot .soon{color:var(--gold);font-weight:700}
+
+/* ---------- season head ---------- */
+.seasonhead{margin-bottom:14px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.seasonhead h2{font-size:19px;font-weight:800}
+.seasonhead span{font-family:var(--mono);font-size:11px;color:var(--mut);letter-spacing:.05em}
+
+/* ---------- skeleton / empty ---------- */
+.skel{aspect-ratio:3/4;border-radius:14px;background:linear-gradient(100deg,var(--panel) 40%,var(--panel-2) 50%,var(--panel) 60%);
+  background-size:220% 100%;animation:shine 1.3s infinite;border:1px solid var(--line)}
+@keyframes shine{to{background-position:-120% 0}}
+.void{border:1px dashed var(--line);border-radius:14px;padding:44px;text-align:center;color:var(--mut);
+  display:flex;flex-direction:column;gap:14px;align-items:center}
+
+/* ---------- modal ---------- */
+.veil{position:fixed;inset:0;background:rgba(4,6,14,.72);backdrop-filter:blur(4px);display:flex;
+  align-items:center;justify-content:center;padding:18px;z-index:50}
+.sheet{width:min(600px,100%);background:var(--panel-2);border:1px solid var(--line);border-radius:18px;
+  padding:18px;max-height:88vh;overflow-y:auto}
+.sheettop{display:flex;gap:14px;margin-bottom:14px;position:relative}
+.sheettop .cover{width:112px;flex:none;border-radius:10px;aspect-ratio:3/4}
+.sheettop .cover .glyph{font-size:56px}
+.smeta h2{font-size:19px;font-weight:800;line-height:1.25;padding-right:30px}
+.native{font-size:12.5px;color:var(--mut);margin:4px 0 8px}
+.metaline{font-size:12px;color:var(--mut);margin-bottom:8px;line-height:1.5}
+.syno{font-size:12.5px;color:var(--mut);line-height:1.55;margin:4px 0 12px}
+.series{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin:12px 0 2px}
+.schip{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;cursor:pointer;
+  border:1px solid var(--line);border-radius:8px;padding:3px 8px;background:var(--panel);transition:.15s;max-width:100%}
+.schip:hover{border-color:rgba(94,225,255,.5)}
+.schip.have{border-left:2px solid var(--gold)}
+.schip b{font-family:var(--mono);font-size:9.5px;font-weight:700;color:var(--mut);letter-spacing:.06em;flex:none}
+.schip .sname{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;max-width:190px}
+.schip .sdot{width:6px;height:6px;border-radius:50%;flex:none}
+.smini{font-family:var(--mono);font-size:11px;font-weight:700;color:#0B0E1A;background:var(--cyan);
+  border:none;border-radius:5px;padding:1px 6px;cursor:pointer;flex:none}
+.smini:hover{filter:brightness(1.12)}
+.streams{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin:10px 0 4px}
+.slabel{font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--mut)}
+.streamlink{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--cyan);text-decoration:none;
+  border:1px solid rgba(94,225,255,.4);border-radius:7px;padding:3px 9px;background:rgba(94,225,255,.07)}
+.streamlink:hover{background:rgba(94,225,255,.16)}
+.mallink{font-family:var(--mono);font-size:11px;color:var(--cyan);text-decoration:none}
+.mallink:hover{text-decoration:underline}
+.x{position:absolute;top:0;right:0;background:none;border:none;color:var(--mut);font-size:15px;cursor:pointer;padding:4px}
+.x:hover{color:var(--tx)}
+.srow{display:flex;align-items:center;gap:14px;padding:11px 0;border-top:1px solid var(--line);flex-wrap:wrap}
+.srow.end{justify-content:flex-end;gap:10px}
+.lbl{font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;color:var(--mut);width:74px;flex:none}
+.pills.tight .pill{padding:5px 10px;font-size:12px}
+.stepper{display:flex;align-items:center;gap:10px}
+.stepper button{width:34px;height:34px;border-radius:9px;border:1px solid var(--line);background:var(--panel);
+  color:var(--tx);font-size:17px;cursor:pointer}
+.stepper button:hover{border-color:var(--cyan)}
+.stepper b{font-family:var(--mono);font-size:17px}
+.stepper i{font-style:normal;font-size:12px;color:var(--mut);margin-left:4px}
+.btn{background:var(--panel);border:1px solid var(--line);color:var(--tx);border-radius:10px;padding:8px 14px;
+  font-family:var(--disp);font-weight:600;font-size:13px;cursor:pointer}
+.btn:hover{border-color:var(--cyan)}
+.btn.danger{color:#FF8A94;border-color:rgba(255,77,94,.35)}
+.btn.danger:hover{background:rgba(255,77,94,.1);border-color:var(--red)}
+.btn.small{padding:6px 11px;font-size:12px}
+
+/* ---------- toast / footer ---------- */
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#0F1526;border:1px solid rgba(94,225,255,.4);
+  color:var(--tx);border-radius:12px;padding:11px 18px;font-size:13px;font-weight:600;z-index:60;max-width:88vw;
+  box-shadow:0 8px 30px rgba(0,0,0,.5);animation:rise .22s ease-out}
+.toast.gold{border-color:rgba(255,201,77,.55)}
+.toast.warn{border-color:rgba(255,77,94,.45)}
+@keyframes rise{from{opacity:0;transform:translate(-50%,8px)}to{opacity:1;transform:translate(-50%,0)}}
+.foot{margin-top:34px;text-align:center;font-family:var(--mono);font-size:10.5px;color:var(--mut);letter-spacing:.06em;
+  display:flex;gap:14px;justify-content:center;align-items:center;flex-wrap:wrap}
+.foot a{color:var(--mut)}
+.linkbtn{background:none;border:none;color:var(--cyan);font-family:var(--mono);font-size:10.5px;cursor:pointer;
+  letter-spacing:.06em;padding:0;text-decoration:underline}
+button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+
+@media (max-width:760px){
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .stat{border-top:1px solid var(--line)}
+  .week{grid-template-columns:repeat(7,74vw)}
+  input.lsearch{width:140px}
+}
+/* Touch screens (the installed phone PWA): fingers need ~44px targets. Mouse layouts unchanged. */
+@media (pointer:coarse){
+  .x{min-width:44px;min-height:44px;font-size:19px;top:-8px;right:-8px}
+  .smini{min-width:34px;min-height:32px;font-size:15px}
+  .stepper button{width:46px;height:46px;font-size:20px}
+  .pills.tight .pill{padding:10px 13px}
+  .plus,.mini{min-height:40px;min-width:44px}
+  .uprow .plus{min-height:46px;min-width:52px}
+  .schip{padding:7px 10px}
+  .streamlink{padding:7px 11px}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">
+    <span class="brand-cn">追番系统</span>
+    <span class="brand-sub">ANITRACK · 自动追踪 / 自动更新 · JIKAN API</span>
+  </div>
+  <div class="top-right">
+    <div class="gsearch">
+      <input id="gsearch" type="search" placeholder="Add anime… search MyAnimeList / 搜索添加" autocomplete="off" aria-label="Search anime to add">
+      <div id="gdrop" class="gdrop" hidden></div>
+    </div>
+    <span class="onair"><i class="lamp"></i><span id="todaylabel"></span></span>
+  </div>
+</header>
+
+<div id="banner"></div>
+<section class="stats" id="stats" aria-label="stats"></section>
+<nav class="tabs" id="tabs" role="tablist"></nav>
+<main id="view"></main>
+<div id="modalroot"></div>
+<div id="toastroot"></div>
+
+<footer class="foot">
+  <span>Data: <a href="https://jikan.moe" target="_blank" rel="noopener">Jikan</a> (MyAnimeList) · fallback <a href="https://docs.anilist.co" target="_blank" rel="noopener">AniList</a> · 中文标题 <a href="https://bgm.tv" target="_blank" rel="noopener">Bangumi</a> · broadcast times JST</span>
+  <span id="cacheage"></span>
+  <button class="linkbtn" data-act="refresh">refresh data</button>
+  <button class="linkbtn" data-act="export">export list</button>
+  <button class="linkbtn" data-act="import">import list</button>
+  <input id="importfile" type="file" accept="application/json,.json" hidden>
+</footer>
+
+<script src="anitrack-cn-data.js"></script>
+<script>
+"use strict";
+/* ============================================================
+   追番系统 · AniTrack — single-file build (Jikan API v4)
+   Open this file in a browser. Your list lives in localStorage.
+   ============================================================ */
+
+const API = "https://api.jikan.moe/v4";
+const LS_LIST  = "anitrack:list:v1";
+const LS_CACHE = "anitrack:season:v3"; // v3: envelope carries the season key it was fetched for
+const CACHE_TTL = 6 * 3600 * 1000; // 6h
+const MAX_PAGES = 6;
+
+/* Genre map: MAL genre id (Jikan) ↔ AniList genre name. MAL "Suspense" = AniList "Thriller". */
+const GENRES = [
+  {mal:1,  al:"Action",        en:"Action",        cn:"动作"},
+  {mal:2,  al:"Adventure",     en:"Adventure",     cn:"冒险"},
+  {mal:4,  al:"Comedy",        en:"Comedy",        cn:"喜剧"},
+  {mal:8,  al:"Drama",         en:"Drama",         cn:"剧情"},
+  {mal:10, al:"Fantasy",       en:"Fantasy",       cn:"奇幻"},
+  {mal:14, al:"Horror",        en:"Horror",        cn:"恐怖"},
+  {mal:7,  al:"Mystery",       en:"Mystery",       cn:"悬疑"},
+  {mal:40, al:"Psychological", en:"Psychological", cn:"心理"},
+  {mal:22, al:"Romance",       en:"Romance",       cn:"恋爱"},
+  {mal:24, al:"Sci-Fi",        en:"Sci-Fi",        cn:"科幻"},
+  {mal:36, al:"Slice of Life", en:"Slice of Life", cn:"日常"},
+  {mal:30, al:"Sports",        en:"Sports",        cn:"运动"},
+  {mal:37, al:"Supernatural",  en:"Supernatural",  cn:"超自然"},
+  {mal:41, al:"Thriller",      en:"Suspense",      cn:"惊悚"},
+  {mal:18, al:"Mecha",         en:"Mecha",         cn:"机甲"},
+  {mal:19, al:"Music",         en:"Music",         cn:"音乐"},
+];
+const SEASONS   = ["winter","spring","summer","fall"];
+const SEASON_CN = { winter:"冬", spring:"春", summer:"夏", fall:"秋" };
+const DAYS    = ["SUN","MON","TUE","WED","THU","FRI","SAT"];
+const DAYS_CN = ["周日","周一","周二","周三","周四","周五","周六"];
+const WEEK_ORDER = [1,2,3,4,5,6,0];
+const DAY_INDEX = {Sundays:0,Mondays:1,Tuesdays:2,Wednesdays:3,Thursdays:4,Fridays:5,Saturdays:6};
+
+const STATUS = {
+  watching:  {label:"Watching",      cn:"在追",   color:"var(--g-watching)"},
+  completed: {label:"Completed",     cn:"已看完", color:"var(--g-completed)"},
+  onhold:    {label:"On Hold",       cn:"搁置",   color:"var(--g-onhold)"},
+  dropped:   {label:"Dropped",       cn:"弃番",   color:"var(--g-dropped)"},
+  ptw:       {label:"Plan to Watch", cn:"想看",   color:"var(--g-ptw)"},
+};
+const STATUS_KEYS = ["watching","completed","onhold","dropped","ptw"];
+const SCORE_LABELS = {10:"Masterpiece",9:"Great",8:"Very Good",7:"Good",6:"Fine",
+  5:"Average",4:"Bad",3:"Very Bad",2:"Horrible",1:"Appalling"};
+
+/* ---------------- state ---------------- */
+const state = {
+  tab: "list",
+  filter: "all",
+  sort: "recent",
+  lquery: "",
+  list: loadList(),          // { [malId]: {status, progress, score, t, anime:snapshot} }
+  season: [],                // snapshots
+  seasonAt: 0,                 // when the season view was last painted
+  liveAt: 0,                   // when live (non-baked) data last arrived — drives the freshness label
+  loadingSeason: false,
+  seasonError: "",
+  searchResults: null,       // null = closed, [] = empty, [...]=results
+  searchFailed: false,       // last search errored (API down) vs. genuinely no matches
+  searching: false,
+  openId: null,
+  openPreview: null,         // snapshot for untracked modal
+  links: {},                 // malId -> [{site,url}] streaming links (lazy, per session)
+  rel: {},                   // malId -> [{rt, snap}] franchise chain — session-scoped ON PURPOSE:
+                             // sequels get announced and statuses flip, so a persisted cache would
+                             // answer "is there a sequel?" with last month's truth forever
+  arYear: 0,                 // archive tab: season being browsed (set at boot)
+  arSeason: "",
+  archive: {},               // { "2025-fall": [snapshots] } — in-memory
+  loadingArchive: false,
+  archiveError: "",
+  all: [],                   // top-anime tab: accumulated snapshots in rank order
+  allGenre: "",              // MAL genre id as string, "" = all genres
+  allPage: 0,
+  allDone: false,
+  allSrc: "",                // "jikan" | "anilist" — picked on first page, then sticky
+  loadingAll: false,
+  allError: "",
+};
+
+/* ---------------- utils ---------------- */
+const $  = (s, el=document) => el.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+/* The BROADCAST day, not the calendar day. Every "is this airing today" test compares against
+   a.day, which jstDayTime() files under the 深夜 convention (00:00-04:59 belongs to the previous
+   night). A plain calendar weekday flipped at midnight, so for five hours a night the today
+   column, ON AIR badge, "Airing today" and NEW EP all pointed at the wrong night. */
+const jstToday = () => jstDayTime(Math.floor(Date.now() / 1000))[0];
+const inLateNight = () => +jstDayTime(Math.floor(Date.now() / 1000))[1].slice(0, 2) >= 24;
+/* Anime seasons are a Japanese calendar concept and the rest of the app is JST
+   (jstToday / jstDayTime), so pin the season to Tokyo too — otherwise a browser
+   west of JST flips season up to a day late and disagrees with its own schedule. */
+const JST_YM = new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Tokyo", year: "numeric", month: "numeric" });
+const seasonNow = () => {
+  const p = {};
+  for (const x of JST_YM.formatToParts(new Date())) p[x.type] = x.value;
+  const m = +p.month - 1;
+  const s = m<3 ? "Winter" : m<6 ? "Spring" : m<9 ? "Summer" : "Fall";
+  return { name: s, year: +p.year };
+};
+/* comparable rank for a "YYYY-season" roster key */
+const seasonRank = (key) => {
+  const i = key.lastIndexOf("-");
+  return (+key.slice(0, i)) * 4 + SEASONS.indexOf(key.slice(i + 1));
+};
+const curSeasonKey = () => { const sn = seasonNow(); return `${sn.year}-${sn.name.toLowerCase()}`; };
+const pct = (p, e) => e ? Math.min(100, Math.round(p / e * 100)) : (p > 0 ? 30 : 0);
+/* Premiered (or premiering) this season — excludes every-season long-runners like One Piece. */
+const isNewSeason = (a) => {
+  const sn = seasonNow();
+  return (a.season === sn.name && a.year === sn.year) || a.up || (!a.season && !a.year);
+};
+const ago = (t) => {
+  const m = Math.round((Date.now() - t) / 60000);
+  return m < 1 ? "just now" : m < 60 ? m + " min ago" : Math.round(m/60) + " h ago";
+};
+
+function loadList(){ try { return JSON.parse(localStorage.getItem(LS_LIST)) || {}; } catch { return {}; } }
+function saveList(){
+  const data = JSON.stringify(state.list);
+  try { localStorage.setItem(LS_LIST, data); return; } catch(e){}
+  /* Storage full. On the hosted site this origin's quota is shared with DayLedger and Larder.
+     Drop AniTrack's own regenerable caches (they refetch) and retry before giving up. */
+  for (const k of [LS_CACHE, "anitrack:archive:v1", "anitrack:cn:v1"]) { try { localStorage.removeItem(k); } catch {} }
+  try { localStorage.setItem(LS_LIST, data); return; } catch(e){}
+  if (typeof toast === "function") toast("⚠ 无法保存 · Browser storage is full — export your list (footer) to back it up", "warn");
+}
+
+/* Normalize a raw Jikan anime object into a small snapshot we store/render. */
+/* MAL/Jikan give the broadcast slot as a calendar weekday + JST time ("Sundays", "01:00").
+   Apply the same 深夜 rollback as jstDayTime(), or the day a show is filed under flips back and
+   forth depending on which source served the last refresh. */
+function jikanSlot(b){
+  if (!b || !DAY_INDEX.hasOwnProperty(b.day)) return { day: null, time: (b && b.time) || null };
+  let day = DAY_INDEX[b.day];
+  if (!b.time || !/^\d{1,2}:\d{2}/.test(b.time)) return { day, time: b.time || null };
+  let [h, m] = b.time.split(":").map(Number);
+  if (h < LATE_NIGHT_CUTOFF){ day = (day + 6) % 7; h += 24; }
+  return { day, time: String(h).padStart(2,"0") + ":" + String(m).padStart(2,"0") };
+}
+function snap(a){
+  return {
+    id: a.mal_id,
+    title: a.title_english || a.title || "Untitled",
+    native: a.title_japanese || a.title || "",
+    image: (a.images && a.images.jpg && (a.images.jpg.large_image_url || a.images.jpg.image_url)) || "",
+    eps: a.episodes || null,
+    airing: !!a.airing || a.status === "Currently Airing",
+    up: a.status === "Not yet aired",
+    ...jikanSlot(a.broadcast),
+    mal: a.score || null,
+    members: a.members || null,
+    type: a.type || "TV",
+    year: a.year || (a.aired && a.aired.prop && a.aired.prop.from && a.aired.prop.from.year) || null,
+    season: a.season ? a.season[0].toUpperCase() + a.season.slice(1) : null,
+    genres: (a.genres || []).slice(0,3).map(g => g.name),
+    studio: (a.studios && a.studios[0] && a.studios[0].name) || "",
+    synopsis: a.synopsis ? String(a.synopsis).replace(/\s*\[Written by MAL Rewrite\]\s*$/,"").slice(0, 420) : "",
+    url: a.url || ("https://myanimelist.net/anime/" + a.mal_id),
+  };
+}
+
+/* ---------------- Chinese titles via Bangumi (bgm.tv) ---------------- */
+const LS_CN = "anitrack:cn:v1";
+const cnMap = (() => { try { return JSON.parse(localStorage.getItem(LS_CN)) || {}; } catch { return {}; } })();
+const cnPending = new Set();
+let cnChain = Promise.resolve(), cnRenderTimer = null;
+/* Static map scraped from acgsecrets.hk seasonal charts (2016+), loaded from anitrack-cn-data.js.
+   Curated, instant, no network — takes priority; Bangumi lookups remain the fallback. */
+const staticCn = (a) => (typeof ACG_CN !== "undefined" && a && ((a.native && ACG_CN[normTitle(a.native)]) || ACG_CN[normTitle(a.title)])) || "";
+/* Priority: baked cn on the snapshot → MAL-id map → normalized-name map → Bangumi lookup. */
+const cnById = (id) => (typeof ACG_CN_BY_ID !== "undefined" && ACG_CN_BY_ID[id]) || "";
+const cnOf = (a) => (a && (a.cn || cnById(a.id))) || staticCn(a) || (a && cnMap[a.id]) || "";
+/* Display title: Chinese when known, else the Japanese name, else the MAL (English) title. */
+const cnTitle = (a) => cnOf(a) || a.native || a.title;
+/* Bangumi and MAL format sequels differently (Ⅲ vs III, ～, spacing) — normalize before comparing. */
+const ROMAN = {"Ⅰ":"I","Ⅱ":"II","Ⅲ":"III","Ⅳ":"IV","Ⅴ":"V","Ⅵ":"VI","Ⅶ":"VII","Ⅷ":"VIII","Ⅸ":"IX","Ⅹ":"X"};
+const KNUM = {"一":"1","二":"2","三":"3","四":"4","五":"5","六":"6","七":"7","八":"8","九":"9","十":"10",
+  "壹":"1","貳":"2","弐":"2","參":"3","参":"3","叁":"3","肆":"4","伍":"5"};
+const NUMCLS = "0-9一二三四五六七八九十壹貳弐參参叁肆伍";
+/* Must stay in sync with norm() in the anitrack-cn-data.js generator (build_roster.py). */
+const normTitle = (s) => String(s || "").normalize("NFKC").replace(/[ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩ]/g, c => ROMAN[c])
+  .replace(/[\s　～〜~\-−—・:：!！?？"'「」『』☆★♪♡＆&().,。、（）]/g, "").toUpperCase()
+  .replace(new RegExp("第([" + NUMCLS + "]+)(期|季|部|シーズン)度?", "g"), (m, n) => "S" + (KNUM[n] || n))
+  .replace(new RegExp("([" + NUMCLS + "])期", "g"), (m, n) => "S" + (KNUM[n] || n))
+  .replace(/(\d+)(?:ST|ND|RD|TH)SEASON/g, "S$1")
+  .replace(/SEASON(\d+)/g, "S$1")
+  .replace(/シーズン(\d+)/g, "S$1");
+
+function lookupCn(a){
+  /* cnOf(), not staticCn(): the roster resolves most shows by MAL id, and those need no
+     Bangumi round-trip at all. Guarding on staticCn alone re-queried every roster show. */
+  if (!a || cnOf(a) || cnMap[a.id] !== undefined || cnPending.has(a.id) || !a.native) return;
+  cnPending.add(a.id);
+  cnChain = cnChain.then(async () => {
+    await sleep(600);
+    try {
+      const r = await fetch("https://api.bgm.tv/v0/search/subjects?limit=10", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ keyword: a.native, filter: { type: [2] } }),
+      });
+      if (!r.ok) throw new Error(r.status);
+      const j = await r.json();
+      const list = Array.isArray(j && j.data) ? j.data : [];
+      const want = normTitle(a.native);
+      const hit = list.find(s => s.name_cn && normTitle(s.name) === want) || list.find(s => s.name_cn);
+      cnMap[a.id] = (hit && hit.name_cn) || "";   // "" = looked up, Bangumi has no CN title
+      try { localStorage.setItem(LS_CN, JSON.stringify(cnMap)); } catch {}
+      /* repaint (debounced) so titles flip to Chinese as lookups land */
+      clearTimeout(cnRenderTimer);
+      cnRenderTimer = setTimeout(() => {
+        if (document.activeElement && document.activeElement.id === "lsearch") return; // don't yank focus mid-typing
+        renderAll();
+      }, 500);
+    } catch { cnPending.delete(a.id); }           // network hiccup — retry on next pass
+  });
+}
+function lookupAllCn(){
+  Object.values(state.list).forEach(e => lookupCn(e.anime));
+  state.season.forEach(lookupCn);
+}
+
+/* ---------------- throttled API queue (Jikan: ~3 req/s) ----------------
+   Jikan has had multi-month outages (504 on every parameterised query). Without a breaker
+   each user action still pays the queue delay plus retries before falling back to AniList —
+   seconds of dead waiting per keystroke. Remember the failure and skip Jikan for a while. */
+const LS_JIKAN = "anitrack:jikanDown";
+const JIKAN_COOLDOWN = 30 * 60 * 1000;
+let jikanDownUntil = 0;
+try { jikanDownUntil = +(localStorage.getItem(LS_JIKAN) || 0) || 0; } catch {}
+const jikanDown = () => Date.now() < jikanDownUntil;
+function tripJikan(){
+  jikanDownUntil = Date.now() + JIKAN_COOLDOWN;
+  try { localStorage.setItem(LS_JIKAN, String(jikanDownUntil)); } catch {}
+}
+function clearJikan(){
+  if (!jikanDownUntil) return;
+  jikanDownUntil = 0;
+  try { localStorage.removeItem(LS_JIKAN); } catch {}
+}
+let chain = Promise.resolve();
+function api(path, retries = 2){
+  if (jikanDown()) return Promise.reject(new Error("Jikan cooling down"));
+  const p = chain.then(async () => {
+    await sleep(420);
+    try {
+      let r = await fetch(API + path);
+      for (let retry = 1; retry <= retries && (r.status === 429 || r.status >= 500); retry++){
+        await sleep(1500 * retry);
+        r = await fetch(API + path);
+      }
+      if (!r.ok) throw new Error("Jikan API " + r.status);
+      clearJikan();
+      return r.json();
+    } catch (e){ tripJikan(); throw e; }
+  });
+  chain = p.catch(() => {});
+  return p;
+}
+
+/* ---------------- AniList fallback (graphql.anilist.co) ----------------
+   Second data source for when Jikan is down. Free, no key, CORS-open, and
+   returns MAL ids so snapshots stay compatible with the tracked list. */
+const ANILIST_Q = `query($season:MediaSeason,$year:Int,$status:MediaStatus,$page:Int){
+  Page(page:$page,perPage:50){
+    pageInfo{hasNextPage}
+    media(type:ANIME,format_in:[TV,TV_SHORT,ONA,OVA],season:$season,seasonYear:$year,status:$status,sort:POPULARITY_DESC){
+      idMal format title{english romaji native} coverImage{large} episodes status
+      nextAiringEpisode{airingAt episode} averageScore popularity seasonYear season genres
+      studios(isMain:true){nodes{name}} description
+    }
+  }
+}`;
+/* Returns {media, truncated}. `truncated` matters: syncSnapshots only infers
+   "this show finished airing" from absence when the feed is known to be complete. */
+async function anilistPages(vars){
+  const out = [];
+  let truncated = false;
+  for (let page = 1; page <= 3; page++){
+    /* NB: AniList treats an explicit null variable as "field equals null" — only send used filters */
+    const r = await fetch("https://graphql.anilist.co", {
+      method: "POST", headers: { "Content-Type": "application/json", "Accept": "application/json" },
+      body: JSON.stringify({ query: ANILIST_Q, variables: { ...vars, page } }),
+    });
+    if (!r.ok) throw new Error("AniList " + r.status);
+    const j = await r.json();
+    const pg = j && j.data && j.data.Page;
+    if (!pg || !Array.isArray(pg.media)) throw new Error("AniList bad response");
+    out.push(...pg.media);
+    if (!pg.pageInfo.hasNextPage) break;
+    if (page === 3){ truncated = true; break; }   // hit our page cap with more to come
+    await sleep(700);
+  }
+  return { media: out, truncated };
+}
+function alSnap(m){
+  /* one definition of "which night does this air on" — see jstDayTime */
+  const [day, time] = jstDayTime(m.nextAiringEpisode && m.nextAiringEpisode.airingAt);
+  return {
+    id: m.idMal,
+    title: (m.title && (m.title.english || m.title.romaji)) || "Untitled",
+    native: (m.title && (m.title.native || m.title.romaji)) || "",
+    image: (m.coverImage && m.coverImage.large) || "",
+    eps: m.episodes || null,
+    airing: m.status === "RELEASING",
+    up: m.status === "NOT_YET_RELEASED",
+    day, time,
+    nextEp: (m.nextAiringEpisode && m.nextAiringEpisode.episode) || null,
+    at: (m.nextAiringEpisode && m.nextAiringEpisode.airingAt) || null,
+    mal: m.averageScore ? +(m.averageScore / 10).toFixed(2) : null,
+    members: m.popularity || null,
+    type: AL_FORMAT[m.format] || "TV",
+    year: m.seasonYear || null,
+    season: m.season ? m.season[0] + m.season.slice(1).toLowerCase() : null,
+    genres: (m.genres || []).slice(0,3),
+    studio: (m.studios && m.studios.nodes && m.studios.nodes[0] && m.studios.nodes[0].name) || "",
+    synopsis: m.description ? m.description.replace(/<[^>]+>/g," ").replace(/\s+/g," ").trim().slice(0,420) : "",
+    url: "https://myanimelist.net/anime/" + m.idMal,
+  };
+}
+async function anilistSeason(year, sname, includeContinuing){
+  const a = await anilistPages({ season: sname.toUpperCase(), year });
+  let media = a.media, truncated = a.truncated;
+  if (includeContinuing){
+    /* global RELEASING feed is POPULARITY_DESC and capped, so it is the likeliest to truncate */
+    try {
+      const b = await anilistPages({ status: "RELEASING" });
+      media = media.concat(b.media); truncated = truncated || b.truncated;
+    } catch { truncated = true; }
+  }
+  const seen = new Set();
+  return { list: media.filter(m => m.idMal && !seen.has(m.idMal) && seen.add(m.idMal)).map(alSnap), truncated };
+}
+const AL_FORMAT = { TV:"TV", TV_SHORT:"TV Short", MOVIE:"Movie", SPECIAL:"Special", OVA:"OVA", ONA:"ONA", MUSIC:"Music" };
+
+/* ---------------- acgsecrets roster (authoritative per-season list, from anitrack-cn-data.js) ----------------
+   Each season's membership comes from acgsecrets.hk (the reference chart), baked with MAL data.
+   Shows without a MAL id (donghua / a few unmatched sequels) are kept as display-only cards. */
+/* Japanese broadcast convention (深夜アニメ): a programme airing 00:30 on Sunday belongs to
+   SATURDAY's schedule and is listed as 24:30 — which is how acgsecrets (our reference chart),
+   LiveChart and every JP TV listing show it. Filing it under Sunday, as a naive weekday
+   conversion does, hides it from the night you would actually look for it. Hours 00:00-04:59
+   are therefore rolled back onto the previous day as 24:00-28:59. */
+const LATE_NIGHT_CUTOFF = 5;
+function jstDayTime(ts){
+  if (!ts) return [null, null];
+  const d = new Date(ts * 1000);
+  let day = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"]
+    .indexOf(new Intl.DateTimeFormat("en-US",{timeZone:"Asia/Tokyo",weekday:"short"}).format(d));
+  const hm = new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Tokyo",hour:"2-digit",minute:"2-digit",hour12:false}).format(d);
+  let [h, m] = hm.split(":").map(Number);
+  if (h < LATE_NIGHT_CUTOFF){ day = (day + 6) % 7; h += 24; }
+  return [day, String(h).padStart(2,"0") + ":" + String(m).padStart(2,"0")];
+}
+/* Countdown to the next broadcast. LiveChart's signature affordance and the one thing the
+   schedule could not tell you: not just "Friday 23:00" but "in 2d 3h". Uses the air timestamp
+   the roster already carries, so it costs no extra requests and works offline. */
+function fmtUntil(ts){
+  if (!ts) return "";
+  const s = ts - Math.floor(Date.now() / 1000);
+  if (s <= 0) return "";
+  const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60);
+  return d ? `${d}d ${h}h` : h ? `${h}h ${m}m` : `${m}m`;
+}
+/* Rendered as a placeholder the ticker refreshes in place, so countdowns stay live
+   without re-rendering (and re-sorting) the whole view every minute. */
+function cdChip(a, cls){
+  const p = projectAir(a);
+  const t = fmtUntil(p.nextAt);
+  if (!t) return "";
+  /* numbers only — snapshots can arrive via import, so never interpolate raw fields into markup */
+  const at = Math.floor(+p.nextAt) || 0, ep = Math.floor(+p.nextEp) || 0;
+  return `<span class="${cls || "cd"}" data-at="${at}" data-ep="${ep || ""}">${ep ? `EP${ep} · ` : ""}${t}</span>`;
+}
+function tickCountdowns(){
+  let n = 0, aired = false;
+  for (const el of document.querySelectorAll("[data-at]")){
+    const t = fmtUntil(+el.dataset.at);
+    const ep = el.dataset.ep ? `EP${el.dataset.ep} · ` : "";
+    if (!t){ aired = true; continue; }
+    el.textContent = ep + t; n++;
+  }
+  /* An episode just aired: repaint so it moves into 待看, the 未看 badge ticks up and the chip
+     rolls to the following week. Deferred while the user is typing, so focus is never stolen. */
+  if (aired) softRender();
+  return n;
+}
+/* Live data is the source of truth, but it goes stale: AniList rate-limits, Jikan never reports
+   next-episode numbers, and the offline roster is frozen at build time. If the known next-air time
+   is already in the past, extrapolate at the weekly cadence instead of freezing — otherwise the
+   countdown silently vanishes and the aired count stops at whatever it last was, so Up Next never
+   notices a new episode. Capped at the episode count, which is also how we learn it has ended. */
+const WEEK = 7 * 86400;
+const WEEKLY = new Set(["TV", "TV Short", "ONA"]);
+/* esc() stops markup injection but not a javascript:/data: URL — hrefs come from API data and imports */
+const safeUrl = (u) => (/^https?:\/\//i.test(String(u || "")) ? String(u) : "");
+function projectAir(a){
+  const none = { aired: null, nextAt: null, nextEp: null, done: false };
+  if (!a || !(a.airing || a.up) || !a.at) return none;
+  const now = Math.floor(Date.now() / 1000);
+  let at = +a.at, ep = a.nextEp ? +a.nextEp : null;
+  if (!Number.isFinite(at) || at <= 0) return none;
+  if (now >= at){
+    /* Movies / OVAs / specials don't air weekly — the known episode has aired, but there is no
+       next slot to project. */
+    if (!WEEKLY.has(a.type || "TV")){
+      const aired = ep || null;
+      const done = !!(a.eps && aired && aired >= a.eps);
+      return { aired: done ? a.eps : aired, nextAt: null, nextEp: null, done };
+    }
+    const k = Math.floor((now - at) / WEEK) + 1;   // scheduled broadcasts that have passed
+    at += k * WEEK;
+    if (ep) ep += k;
+  }
+  let aired = ep ? ep - 1 : null;
+  if (a.eps && aired !== null && aired >= a.eps) return { aired: a.eps, nextAt: null, nextEp: null, done: true };
+  return { aired, nextAt: at, nextEp: ep, done: false };
+}
+let rosterSynthId = 0;
+const rosterIdCache = new Map();   // display-only shows → stable synthetic negative id
+function rosterSnap(e){
+  const [day, time] = jstDayTime(e.ai);
+  let id = e.i;
+  if (!id){ id = rosterIdCache.get(e.c); if (!id){ id = --rosterSynthId; rosterIdCache.set(e.c, id); } }
+  return {
+    id, title: e.e || e.j || e.c, native: e.j || e.c, image: e.im || "",
+    eps: e.ep || null, airing: e.ns === "RELEASING", up: e.ns === "NOT_YET_RELEASED",
+    day, time, mal: e.sc ? +(e.sc / 10).toFixed(2) : null, members: e.pop || null,
+    type: e.f || "TV", year: e.y || null, season: e.ss || null,
+    genres: e.g || [], studio: e.st || "", synopsis: "",
+    url: e.i ? "https://myanimelist.net/anime/" + e.i : "",
+    cn: e.c, nomal: !e.i, adult: !!e.x, at: e.ai || null, nextEp: e.ne || null,
+  };
+}
+/* The baked status is frozen at build time. If live enrichment can't run (offline, AniList 429),
+   a Fall show baked as NOT_YET_RELEASED would read 未播 SOON for its whole run and never enter the
+   schedule. Roll it forward from its own baked air time instead. Live data still wins on merge. */
+function rollForward(s){
+  if (!WEEKLY.has(s.type || "TV") || !s.at) return s;
+  const now = Math.floor(Date.now() / 1000);
+  if (s.up && s.at <= now){ s.up = false; s.airing = true; }          // premiered since the build
+  const p = projectAir(s);
+  if (p.done){ s.airing = false; s.at = null; s.nextEp = null; }        // its run is over
+  else if (p.nextAt){ s.at = p.nextAt; s.nextEp = p.nextEp; [s.day, s.time] = jstDayTime(p.nextAt); }
+  return s;
+}
+function rosterFor(key){
+  if (typeof ACG_ROSTER === "undefined" || !ACG_ROSTER[key]) return [];
+  /* Status/air-time are baked at build time. For a season that is already over, "RELEASING"
+     and a weekly slot are simply wrong — the Archive tab was showing AIRS TODAY on shows
+     that ended months ago. Only the current (and future) seasons may claim to be airing. */
+  const stale = seasonRank(key) < seasonRank(curSeasonKey());
+  return ACG_ROSTER[key].map(e => {
+    const s = rollForward(rosterSnap(e));
+    /* unconditional: rollForward() may already have marked a show finished, and it must not
+       keep advertising its old weekly slot once its season is over */
+    if (stale){ s.airing = false; s.up = false; s.day = null; s.time = null; s.at = null; s.nextEp = null; }
+    return s;
+  });
+}
+/* Overlay live fields onto a stored/roster snapshot. Shared by enrichRoster and syncSnapshots
+   so the two can never drift; `??` keeps a good stored value when the feed omits a field. */
+function mergeLive(base, f){
+  return { ...base, mal: f.mal ?? base.mal, members: f.members ?? base.members,
+    airing: f.airing, up: f.up,
+    day: (f.day !== null && f.day !== undefined) ? f.day : base.day,
+    time: f.time || base.time, eps: f.eps ?? base.eps,
+    synopsis: f.synopsis || base.synopsis,
+    /* ?? keeps a good stored value when a thin source (Jikan) omits the field — but when the feed
+       says the show is no longer airing, a leftover next-air time is simply wrong. */
+    nextEp: (f.airing || f.up) ? (f.nextEp ?? base.nextEp) : (f.nextEp ?? null),
+    at:     (f.airing || f.up) ? (f.at ?? base.at)         : (f.at ?? null) };
+}
+/* Roster = membership; overlay fresh live-feed fields so scores/airing stay current. */
+function enrichRoster(roster, live){
+  const by = Object.fromEntries((live || []).map(a => [a.id, a]));
+  return roster.map(r => { const f = by[r.id]; return f ? mergeLive(r, f) : r; });
+}
+const ANILIST_TOP_Q = `query($genre:String,$page:Int){
+  Page(page:$page,perPage:50){
+    pageInfo{hasNextPage}
+    media(type:ANIME,genre:$genre,isAdult:false,sort:SCORE_DESC){
+      idMal format title{english romaji native} coverImage{large} episodes status
+      nextAiringEpisode{airingAt episode} averageScore popularity seasonYear season genres
+      studios(isMain:true){nodes{name}} description
+    }
+  }
+}`;
+const ANILIST_SEARCH_Q = `query($q:String){
+  Page(page:1,perPage:10){
+    media(type:ANIME,search:$q){
+      idMal format title{english romaji native} coverImage{large} episodes status
+      nextAiringEpisode{airingAt episode} averageScore popularity seasonYear season genres
+      studios(isMain:true){nodes{name}} description
+    }
+  }
+}`;
+/* "Where can I watch this?" — LiveChart/AniChart both lead with this and AniTrack had no answer.
+   AniList exposes it as externalLinks[type=STREAMING] (Crunchyroll, Netflix, Bilibili TV, iQIYI…).
+   Fetched lazily when a detail modal opens, so it costs nothing on the grid views. */
+const linkRetry = {};   // malId -> earliest ms to retry after a failed lookup
+/* One request serves both the WATCH row and the SERIES row. The modal already POSTs this on
+   open, so franchise relations cost nothing against AniList's (currently degraded) 30/min budget. */
+const STREAM_Q = `query($id:Int){Media(idMal:$id,type:ANIME){
+  externalLinks{site url type language}
+  relations{edges{relationType node{
+    idMal type format status episodes averageScore popularity seasonYear season
+    title{english romaji native} coverImage{large} nextAiringEpisode{airingAt episode}
+    genres studios(isMain:true){nodes{name}} description
+  }}}
+}}`;
+/* Only the links that mean "another season / part of the same story". ADAPTATION (the manga),
+   CHARACTER, OTHER etc. are noise in a watch-order context. */
+const REL_LABEL = { PREQUEL:"前作 Prequel", SEQUEL:"续作 Sequel", SIDE_STORY:"外传 Side story",
+                    PARENT:"本篇 Main", ALTERNATIVE:"别版 Alt" };
+async function loadLinks(id){
+  if (!id || id <= 0 || state.links[id] !== undefined) return;
+  if (linkRetry[id] && Date.now() < linkRetry[id]) return;   // backing off
+  state.links[id] = null;                      // in-flight marker
+  try {
+    const r = await fetch("https://graphql.anilist.co", {
+      method: "POST", headers: { "Content-Type": "application/json", "Accept": "application/json" },
+      body: JSON.stringify({ query: STREAM_Q, variables: { id } }),
+    });
+    if (!r.ok) throw new Error("AniList " + r.status);
+    const j = await r.json();
+    const all = ((j.data && j.data.Media && j.data.Media.externalLinks) || []);
+    state.links[id] = all.filter(l => l.type === "STREAMING" && l.url)
+                         .map(l => ({ site: l.site, url: l.url }));
+    const edges = ((j.data && j.data.Media && j.data.Media.relations && j.data.Media.relations.edges) || []);
+    state.rel[id] = edges
+      /* idMal MUST be truthy: a null one would collide with the synthetic negative ids
+         that roster-only shows get, silently aliasing unrelated entries. */
+      .filter(e => e.node && e.node.type !== "MANGA" && e.node.idMal && REL_LABEL[e.relationType])
+      .map(e => ({ rt: e.relationType, snap: alSnap(e.node) }))
+      .sort((a, b) => (a.snap.year || 0) - (b.snap.year || 0));
+  } catch {
+    /* never cache a failure as "no links" — a transient 429 would otherwise mean this show
+       shows nowhere-to-watch forever. Drop the entry and back off before retrying. */
+    delete state.links[id]; delete state.rel[id];
+    linkRetry[id] = Date.now() + 60000;
+  }
+  if (state.openId === id || (state.openPreview && state.openPreview.id === id)) renderModal();
+}
+async function anilistSearch(qstr){
+  const r = await fetch("https://graphql.anilist.co", {
+    method: "POST", headers: { "Content-Type": "application/json", "Accept": "application/json" },
+    body: JSON.stringify({ query: ANILIST_SEARCH_Q, variables: { q: qstr } }),
+  });
+  if (!r.ok) throw new Error("AniList " + r.status);
+  const j = await r.json();
+  const pg = j && j.data && j.data.Page;
+  if (!pg || !Array.isArray(pg.media)) throw new Error("AniList bad response");
+  return pg.media.filter(m => m.idMal).map(alSnap);
+}
+async function anilistTop(genreName, page){
+  /* same null-variable trap as anilistPages: omit $genre entirely when unset */
+  const vars = genreName ? { genre: genreName, page } : { page };
+  const r = await fetch("https://graphql.anilist.co", {
+    method: "POST", headers: { "Content-Type": "application/json", "Accept": "application/json" },
+    body: JSON.stringify({ query: ANILIST_TOP_Q, variables: vars }),
+  });
+  if (!r.ok) throw new Error("AniList " + r.status);
+  const j = await r.json();
+  const pg = j && j.data && j.data.Page;
+  if (!pg || !Array.isArray(pg.media)) throw new Error("AniList bad response");
+  return { list: pg.media.filter(m => m.idMal).map(alSnap), hasNext: !!(pg.pageInfo && pg.pageInfo.hasNextPage) };
+}
+
+/* ---------------- season data ---------------- */
+function readCache(){
+  try {
+    const c = JSON.parse(localStorage.getItem(LS_CACHE));
+    if (c && Array.isArray(c.data)) return c;
+  } catch {}
+  return null;
+}
+async function loadSeason(force){
+  if (state.loadingSeason){ if (force) toast("Already refreshing…"); return; }
+  const sn = seasonNow();
+  const rkey = `${sn.year}-${sn.name.toLowerCase()}`;
+  const roster = rosterFor(rkey);                 // authoritative membership (works offline)
+  if (roster.length && !state.season.length){ state.season = roster; state.seasonAt = Date.now(); renderAll(); }
+
+  const cached = readCache();
+  /* cached.s guards the rollover: a Summer payload must never be served as Fall */
+  if (cached && cached.s === rkey && !force && Date.now() - cached.t < CACHE_TTL){
+    state.season = roster.length ? enrichRoster(roster, cached.data) : cached.data;
+    state.seasonAt = cached.t; state.liveAt = cached.t;
+    syncSnapshots(cached.data, cached.partial); lookupAllCn(); renderAll(); refreshTracked(); return;
+  }
+  state.loadingSeason = true; state.seasonError = ""; renderAll();
+  let live = null, partial = false;
+  try {
+    let out;
+    try {
+      out = await fetchSeasonPages("/seasons/now", "filter=tv&continuing=true&");
+    } catch {
+      out = (await fetchSeasonPages("/seasons/now", "", 10)).filter(a => a && a.type === "TV");
+      partial = true;
+    }
+    const seen = new Set();
+    live = out.filter(a => a && !seen.has(a.mal_id) && seen.add(a.mal_id)).map(snap);
+  } catch (e){
+    try {
+      const al = await anilistSeason(sn.year, sn.name.toLowerCase(), true);
+      live = al.list; partial = al.truncated;
+    }
+    catch (e2){
+      if (!roster.length) state.seasonError = (location.protocol === "https:" && location.host.includes("claude"))
+        ? "Preview sandboxes block outside requests — download this file and open it on your Mac."
+        : "Couldn't reach Jikan (" + esc(e.message) + ") or AniList (" + esc(e2.message) + "). Wait a minute, then hit retry.";
+    }
+  }
+  if (roster.length) state.season = live ? enrichRoster(roster, live) : roster;
+  else if (live) state.season = live;
+  state.seasonAt = Date.now();
+  if (live){
+    state.liveAt = state.seasonAt;
+    try { localStorage.setItem(LS_CACHE, JSON.stringify({ s: rkey, t: state.seasonAt, data: live, partial })); } catch {}
+  }
+  syncSnapshots(live || [], partial || !live);
+  refreshTracked();
+  state.loadingSeason = false;
+  lookupAllCn();
+  renderAll();
+}
+async function fetchSeasonPages(path, params, maxPages = MAX_PAGES){
+  const out = [];
+  for (let page = 1; page <= maxPages; page++){
+    const j = await api(`${path}?${params}page=${page}`);
+    if (!Array.isArray(j.data)) throw new Error("Jikan API bad response"); // error body with 200 status
+    out.push(...j.data);
+    if (!(j.pagination && j.pagination.has_next_page)) break;
+  }
+  return out;
+}
+/* Fetch one season's TV titles; falls back to the bare feed (client-side filtered)
+   when Jikan 504s parameterised queries. Bare feed includes movies/OVAs, so allow more pages. */
+async function fetchSeasonTv(path, extraParams = ""){
+  try {
+    return await fetchSeasonPages(path, `filter=tv&${extraParams}`);
+  } catch {
+    return (await fetchSeasonPages(path, "", 10)).filter(a => a && a.type === "TV");
+  }
+}
+/* Repaint unless the user is typing in a search box — a full render replaces the input
+   mid-keystroke and drops focus. Deferred work just shows up on the next render. */
+function softRender(){
+  const ae = document.activeElement;
+  if (ae && (ae.id === "lsearch" || ae.id === "gsearch")) return;
+  renderAll();
+}
+/* The season feeds only hold the current season plus a capped, popularity-sorted RELEASING list,
+   so a tracked show that FINISHES (a 2-cour ending mid-season, any Summer show after Oct 1) drops
+   out of every feed and was never updated again: frozen as "airing", its finale never counted,
+   still sitting in the schedule. Ask AniList about exactly the tracked shows instead — one request
+   per 50 ids. Only entries that come back are applied; nothing is inferred from absence. */
+const TRACK_Q = `query($ids:[Int]){Page(perPage:50){media(type:ANIME,idMal_in:$ids){
+  idMal format status episodes averageScore popularity seasonYear season
+  title{english romaji native} coverImage{large} nextAiringEpisode{airingAt episode}
+  genres studios(isMain:true){nodes{name}} description
+}}}`;
+let trackedAt = 0;
+async function refreshTracked(){
+  if (Date.now() - trackedAt < 20 * 60 * 1000) return;      // at most every 20 min
+  const ids = Object.entries(state.list)
+    .filter(([id, e]) => +id > 0 && e && e.anime && e.status !== "completed" && e.status !== "dropped"
+                         && (e.anime.airing || e.anime.up))
+    .map(([id]) => +id);
+  if (!ids.length) return;
+  trackedAt = Date.now();
+  const fresh = [];
+  for (let i = 0; i < ids.length; i += 50){
+    try {
+      const r = await fetch("https://graphql.anilist.co", {
+        method: "POST", headers: { "Content-Type": "application/json", "Accept": "application/json" },
+        body: JSON.stringify({ query: TRACK_Q, variables: { ids: ids.slice(i, i + 50) } }),
+      });
+      if (!r.ok) break;
+      const j = await r.json();
+      ((j.data && j.data.Page && j.data.Page.media) || []).forEach(m => { if (m && m.idMal) fresh.push(alSnap(m)); });
+    } catch { break; }
+  }
+  if (!fresh.length){ trackedAt = 0; return; }              // failed (429/offline): retry next load
+  syncSnapshots(fresh, true);                                // partial=true: apply only what came back
+  softRender();
+}
+/* The “自动更新” part: refresh stored snapshots from live season data.
+   When the feed is partial (fallback mode), absence doesn't mean finished airing. */
+function syncSnapshots(freshList, partial){
+  const fresh = Object.fromEntries((freshList || []).map(a => [a.id, a]));
+  let touched = false;
+  for (const id of Object.keys(state.list)){
+    const e = state.list[id], a = e && e.anime;
+    if (!a) continue;
+    const f = fresh[id];
+    if (f){ e.anime = mergeLive(a, f); touched = true; }
+    else if (!partial && a.airing && state.seasonAt && +id > 0 && (a.type || "TV") === "TV"){
+      /* Absence only proves "finished airing" for shows the feed could have contained.
+         The season feeds skew to TV, and roster-only shows have synthetic negative ids —
+         inferring from their absence used to permanently un-air every tracked ONA/short. */
+      a.airing = false; touched = true;
+    }
+  }
+  if (touched) saveList();
+}
+
+/* ---------------- archive (past seasons) ---------------- */
+const LS_AR = "anitrack:archive:v1";   // { "2025-fall": {t, data} } — last 4 seasons browsed
+function prevSeason(){
+  const sn = seasonNow();
+  let i = SEASONS.indexOf(sn.name.toLowerCase()) - 1, y = sn.year;
+  if (i < 0){ i = 3; y--; }
+  return { year: y, name: SEASONS[i] };
+}
+function readArchiveStore(){ try { return JSON.parse(localStorage.getItem(LS_AR)) || {}; } catch { return {}; } }
+function cacheArchive(key, data){
+  try {
+    const s = readArchiveStore();
+    s[key] = { t: Date.now(), data };
+    Object.keys(s).sort((a,b) => s[b].t - s[a].t).slice(4).forEach(k => delete s[k]);
+    localStorage.setItem(LS_AR, JSON.stringify(s));
+  } catch {}
+}
+async function loadArchive(year, sname){
+  if (state.loadingArchive) return;
+  const key = `${year}-${sname}`;
+  state.arYear = year; state.arSeason = sname; state.archiveError = "";
+  /* acgsecrets roster (2016+) is authoritative & instant — no fetch needed */
+  const roster = rosterFor(key);
+  if (roster.length){ state.archive[key] = roster; roster.forEach(lookupCn); renderAll(); return; }
+  if (!state.archive[key]){
+    const stored = readArchiveStore()[key];
+    if (stored && Array.isArray(stored.data)) state.archive[key] = stored.data;
+  }
+  if (state.archive[key]){
+    state.archive[key].forEach(lookupCn);
+    renderAll(); return;
+  }
+  state.loadingArchive = true; renderAll();
+  try {
+    const out = await fetchSeasonTv(`/seasons/${year}/${sname}`);
+    const seen = new Set();
+    const snaps = out.filter(a => a && !seen.has(a.mal_id) && seen.add(a.mal_id)).map(snap);
+    state.archive[key] = snaps;
+    if (snaps.length) cacheArchive(key, snaps); // empty likely means a degraded feed — don't persist it
+    snaps.forEach(lookupCn);
+  } catch (e){
+    try {
+      const snaps = (await anilistSeason(year, sname, false)).list;
+      state.archive[key] = snaps;
+      if (snaps.length) cacheArchive(key, snaps);
+      snaps.forEach(lookupCn);
+      toast("Jikan is down — loaded this season from AniList instead", "gold");
+    } catch (e2){
+      state.archiveError = `Couldn't load ${sname} ${year} — Jikan (${esc(e.message)}) and AniList (${esc(e2.message)}) both failed. Hit retry in a minute.`;
+    }
+  }
+  state.loadingArchive = false;
+  renderAll();
+}
+/* Newest season the Archive tab may show = the one before the current season.
+   Using prevSeason() keeps the arrows and the dropdowns on one definition (the old
+   nowIdx-1 arithmetic underflowed in Winter, letting the dropdowns pick a future season). */
+function clampArchive(y, s){
+  const lim = prevSeason(), li = SEASONS.indexOf(lim.name);
+  let i = SEASONS.indexOf(s);
+  if (i < 0) i = li;
+  if (y > lim.year || (y === lim.year && i > li)) return { year: lim.year, name: SEASONS[li] };
+  if (y < 1970) return { year: 1970, name: SEASONS[i] };
+  return { year: y, name: SEASONS[i] };
+}
+function stepArchive(dir){
+  let i = SEASONS.indexOf(state.arSeason) + dir, y = state.arYear;
+  if (i < 0){ i = 3; y--; }
+  if (i > 3){ i = 0; y++; }
+  const lim = prevSeason(), li = SEASONS.indexOf(lim.name);
+  if (y > lim.year || (y === lim.year && i > li)) return; // current season lives in its own tab
+  loadArchive(y, SEASONS[i]);
+}
+
+/* ---------------- top anime (all, by score) ---------------- */
+async function loadAllPage(reset){
+  if (state.loadingAll) return;
+  if (reset){ state.all = []; state.allPage = 0; state.allDone = false; state.allSrc = ""; }
+  state.allError = "";
+  state.loadingAll = true; renderAll();
+  const page = state.allPage + 1;
+  const g = GENRES.find(x => String(x.mal) === state.allGenre);
+  try {
+    let list = [], hasNext = false;
+    if (state.allSrc !== "anilist"){
+      try {
+        const j = await api(g ? `/anime?genres=${g.mal}&order_by=score&sort=desc&sfw=true&page=${page}`
+                              : `/top/anime?page=${page}`);
+        if (!Array.isArray(j.data)) throw new Error("Jikan API bad response");
+        list = j.data.map(snap);
+        hasNext = !!(j.pagination && j.pagination.has_next_page);
+        state.allSrc = "jikan";
+      } catch (e){
+        if (state.allSrc === "jikan") throw e; // Jikan was serving this list — don't splice sources mid-ranking
+        state.allSrc = "anilist";
+      }
+    }
+    if (state.allSrc === "anilist"){
+      const res = await anilistTop(g && g.al, page);
+      list = res.list; hasNext = res.hasNext;
+      if (page === 1 && list.length) toast("Jikan is down — rankings loaded from AniList instead", "gold");
+    }
+    const seen = new Set(state.all.map(a => a.id));
+    state.all = state.all.concat(list.filter(a => a.id && !seen.has(a.id)));
+    state.allPage = page;
+    state.allDone = !hasNext;
+    list.forEach(lookupCn);
+  } catch (e){
+    state.allError = `Couldn't load rankings (${esc(e.message)}). Hit retry in a minute.`;
+  }
+  state.loadingAll = false;
+  renderAll();
+}
+
+/* ---------------- mutations ---------------- */
+function entry(id){ return state.list[id]; }
+function touch(id, patch){
+  const e = state.list[id]; if (!e) return;
+  Object.assign(e, patch, { t: Date.now() });
+  saveList();
+}
+function plusOne(id){
+  const e = entry(id); if (!e) return;
+  const a = e.anime, next = e.progress + 1;
+  if (a.eps && next >= a.eps){
+    touch(id, { progress: a.eps, status: "completed" });
+    toast(`${a.title} — finale logged. Auto-moved to Completed 🎉`, "gold");
+  } else {
+    touch(id, { progress: next, status: e.status === "ptw" ? "watching" : e.status });
+    toast(`Episode ${next} logged · ${a.title}`);
+  }
+  renderAll();
+}
+function minusOne(id){
+  const e = entry(id); if (!e || e.progress <= 0) return;
+  touch(id, { progress: e.progress - 1, status: e.status === "completed" ? "watching" : e.status });
+  renderAll();
+}
+function setStatus(id, status){
+  const e = entry(id); if (!e) return;
+  const patch = { status };
+  if (status === "completed" && e.anime.eps) patch.progress = e.anime.eps;
+  if (status === "ptw") patch.progress = 0;
+  touch(id, patch);
+  toast(`${e.anime.title} → ${STATUS[status].label}`);
+  renderAll();
+}
+function track(snapObj, status = "watching"){
+  if (state.list[snapObj.id]){ toast("Already in your list"); return; }
+  state.list[snapObj.id] = { status, progress: 0, score: 0, t: Date.now(), anime: snapObj };
+  saveList();
+  lookupCn(snapObj);
+  toast(status === "watching" ? `Now tracking ${snapObj.title} 📡` : `${snapObj.title} → Plan to Watch`);
+  renderAll();
+}
+function removeEntry(id){
+  const e = entry(id); if (!e) return;
+  const name = e.anime.title;
+  delete state.list[id];
+  saveList();
+  state.openId = null;
+  toast(`${name} removed from list`, "warn");
+  renderAll();
+}
+
+/* ---------------- toast ---------------- */
+let toastTimer = null;
+function toast(msg, tone = "ok"){
+  $("#toastroot").innerHTML = `<div class="toast ${tone}" role="status">${esc(msg)}</div>`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { $("#toastroot").innerHTML = ""; }, 2600);
+}
+
+/* ---------------- global search (add anything) ---------------- */
+/* One search against the live APIs: Jikan first, AniList fallback. Throws only if both fail. */
+async function apiSearchSnaps(qstr){
+  try {
+    const j = await api(`/anime?q=${encodeURIComponent(qstr)}&limit=8`, 0); // no slow retries while typing
+    if (Array.isArray(j.data)) return j.data.map(snap);
+    throw new Error("bad response");
+  } catch {
+    return await anilistSearch(qstr); // throws if AniList is also unreachable
+  }
+}
+/* The live APIs index Japanese/romaji/English names but only spotty Chinese ones — newer
+   entries (e.g. 咒術迴戰 死滅迴游 前篇) often have no Chinese alias, so a Chinese search misses
+   them. Map the Chinese query to each matching show's Japanese/romaji name via the local
+   acgsecrets index, so those names can be searched instead. */
+function localResolveNames(qstr){
+  if (typeof ACG_SHOWS === "undefined") return [];
+  const q = qstr.trim();
+  if (q.length < 2 || !/[㐀-鿿]/.test(q)) return []; // only for CJK queries
+  const out = [];
+  for (const s of ACG_SHOWS){
+    if (s[1] && s[0].includes(q)){ out.push(s[1]); if (out.length >= 4) break; }
+  }
+  return out;
+}
+let searchTimer = null, searchSeq = 0;
+function onSearchInput(v){
+  clearTimeout(searchTimer);
+  const q = v.trim();
+  if (q.length < 2){ state.searchResults = null; renderSearch(); return; }
+  searchTimer = setTimeout(async () => {
+    const seq = ++searchSeq;
+    state.searching = true; renderSearch();
+    let results = [], failed = false;
+    try { results = await apiSearchSnaps(q); }
+    catch { failed = true; }
+    /* augment Chinese queries with results for the resolved Japanese/romaji names */
+    const names = localResolveNames(q);
+    if (names.length){
+      const have = new Set(results.map(r => r.id));
+      for (const nm of names){
+        if (seq !== searchSeq) return;
+        try {
+          for (const r of await apiSearchSnaps(nm))
+            if (r.id && !have.has(r.id)){ results.push(r); have.add(r.id); }
+        } catch {}
+      }
+      if (results.length) failed = false;
+    }
+    if (seq !== searchSeq) return;
+    state.searchResults = results;
+    state.searchFailed = failed && !results.length;
+    state.searching = false; renderSearch();
+  }, 450);
+}
+function renderSearch(){
+  const box = $("#gdrop");
+  if (state.searching){ box.hidden = false; box.innerHTML = `<div class="gnote">Searching MyAnimeList…</div>`; return; }
+  if (state.searchResults === null){ box.hidden = true; box.innerHTML = ""; return; }
+  if (!state.searchResults.length){ box.hidden = false; box.innerHTML = `<div class="gnote">${state.searchFailed
+    ? "MyAnimeList search is unreachable (Jikan API error) — try again in a minute."
+    : "No matches. Try the romaji title."}</div>`; return; }
+  box.hidden = false;
+  box.innerHTML = state.searchResults.map(a => `
+    <div class="gitem" data-act="preview" data-id="${a.id}">
+      <img src="${esc(a.image)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.visibility='hidden'">
+      <div><div class="gi-t">${esc(cnTitle(a))}</div>
+      <div class="gi-m">${esc(a.type)}${a.year ? " · " + a.year : ""}${a.mal ? " · ★ " + a.mal : ""}${a.eps ? " · " + a.eps + " eps" : ""}</div></div>
+      <span class="gi-add">${state.list[a.id]
+        ? `<span class="giok">✓ 已加</span>`
+        : `<button class="mini" data-act="qadd" data-id="${a.id}">＋</button>`}</span>
+    </div>`).join("");
+}
+function closeSearch(clear){
+  /* bump the sequence so any in-flight request resolves into nothing, and cancel the
+     pending debounce — otherwise a closed dropdown re-opens with stale results */
+  searchSeq++; clearTimeout(searchTimer);
+  state.searchResults = null; state.searching = false; state.searchFailed = false;
+  if (clear) $("#gsearch").value = "";
+  renderSearch();
+}
+
+/* ---------------- rendering ---------------- */
+function coverHTML(a, badges = ""){
+  const img = a.image ? `<img src="${esc(a.image)}" alt="" loading="lazy" referrerpolicy="no-referrer"
+    onerror="this.remove()">` : "";
+  const glyph = esc((a.title || "?").trim().charAt(0).toUpperCase());
+  /* the countdown chip sits in this corner and says the same thing more usefully */
+  const slot = (!fmtUntil(a.at) && a.airing && a.day !== null && a.time)
+    ? `<span class="slotchip">${DAYS[a.day]} ${esc(a.time)}</span>` : "";
+  return `<div class="cwrap"><div class="cover"><span class="glyph">${glyph}</span>${img}<span class="scan"></span></div>${slot}${badges}</div>`;
+}
+
+function renderHeaderBits(){
+  const d = jstToday();
+  $("#todaylabel").textContent = `${DAYS[d]} · ${DAYS_CN[d]} · JST`;
+  /* state.seasonAt is just when we painted (the roster paints instantly, so it always read
+     "just now"). Report when the LIVE numbers actually arrived; if none ever did, say so and
+     fall back to when the offline roster was built. */
+  const el = $("#cacheage");
+  if (state.liveAt) el.textContent = "live data " + ago(state.liveAt);
+  else if (typeof ACG_BUILT !== "undefined" && ACG_BUILT)
+    el.textContent = "offline roster · built " + new Date(ACG_BUILT * 1000).toISOString().slice(0,10);
+  else el.textContent = "";
+}
+
+function renderStats(){
+  const entries = Object.values(state.list);
+  const watching = entries.filter(e => e.status === "watching").length;
+  const completed = entries.filter(e => e.status === "completed").length;
+  const scored = entries.filter(e => e.score > 0);
+  const mean = scored.length ? (scored.reduce((s,e) => s + e.score, 0) / scored.length).toFixed(1) : "–";
+  const today = jstToday();
+  const airToday = entries.filter(e => e.status === "watching" && e.anime.airing && e.anime.day === today).length;
+  $("#stats").innerHTML = `
+    <div class="stat"><b style="color:${STATUS.watching.color}">${watching}</b><span>Watching<i>在追</i></span></div>
+    <div class="stat"><b style="color:${STATUS.completed.color}">${completed}</b><span>Completed<i>已看完</i></span></div>
+    <div class="stat"><b style="color:var(--gold)">${mean}</b><span>Mean score<i>平均分</i></span></div>
+    <div class="stat"><b style="color:var(--red)">${airToday}</b><span>Airing today<i>今日更新</i></span></div>`;
+}
+
+function renderTabs(){
+  const sn = seasonNow();
+  const waiting = upNextRows().filter(r => r.kind === "behind" || r.kind === "catchup")
+                             .reduce((n, r) => n + (r.pending || 0), 0);
+  const tabs = [["next","继续观看", waiting ? `Up Next · ${waiting}` : "Up Next"],["schedule","每日放送","Schedule"],["cal","放送日历","Calendar"],["list","我的追番","My List"],["season","本季新番",`${sn.name} ${sn.year}`],["past","往季番剧","Archive"],["all","全部番剧","Top Anime"]];
+  $("#tabs").innerHTML = tabs.map(([k,cn,en]) => `
+    <button class="tab ${state.tab === k ? "on":""}" role="tab" aria-selected="${state.tab===k}" data-act="tab" data-id="${k}">
+      <span class="tab-cn">${cn}</span><span class="tab-en">${esc(en)}</span>
+    </button>`).join("");
+}
+
+function renderBanner(){
+  $("#banner").innerHTML = state.seasonError
+    ? `<div class="banner">⚠︎ ${state.seasonError}<button class="btn small" data-act="refresh">Retry</button></div>` : "";
+}
+
+/* ----- schedule view ----- */
+function renderSchedule(){
+  const today = jstToday();
+  const map = new Map(state.season.map(a => [a.id, a]));
+  for (const e of Object.values(state.list)){
+    if (e.anime.airing && !projectAir(e.anime).done && !map.has(e.anime.id)) map.set(e.anime.id, e.anime);
+  }
+  const shows = [...map.values()].filter(a => a.airing && a.day !== null);
+  const cols = WEEK_ORDER.map(d => {
+    const rows = shows.filter(a => a.day === d).sort((x,y) => (x.time||"").localeCompare(y.time||""));
+    const inner = rows.length ? rows.map(a => {
+      const e = state.list[a.id];
+      const side = e
+        ? `<span class="sside"><i class="dot" style="background:${STATUS[e.status].color}"></i>${
+            e.status === "watching" ? `<button class="mini" data-act="plus" data-id="${a.id}" aria-label="log episode">+1</button>` : ""}</span>`
+        : `<button class="mini ghost" data-act="qtrack" data-id="${a.id}" aria-label="track ${esc(a.title)}">＋</button>`;
+      return `<div class="slot ${e ? "tracked":""}" data-act="open" data-id="${a.id}">
+        <span class="stime">${esc(a.time || "--:--")}</span>
+        <span class="smain"><span class="sname" title="${esc(a.native)}">${esc(cnTitle(a))}</span>${cdChip(a, "cdline")}</span>${side}</div>`;
+    }).join("") : `<div class="slot empty">— no broadcasts —</div>`;
+    return `<div class="day ${d === today ? "today":""}">
+      <div class="dayhead"><span class="dayen">${DAYS[d]}</span><span class="daycn">${DAYS_CN[d]}</span>
+      ${d === today ? `<span class="onair"><i class="lamp"></i>ON AIR</span>` : ""}</div>${inner}</div>`;
+  }).join("");
+  return `<div class="weekhead"><h2>Broadcast week</h2><span class="fnote">air days & times in JST · tap ＋ to track</span></div>
+    ${state.loadingSeason && !shows.length ? skeletons(7) : `<section class="week">${cols}</section>`}`;
+}
+
+/* ----- calendar view (weekly timetable: Mon–Sun columns, hour rows) ----- */
+function renderCalendar(){
+  const today = jstToday();
+  const map = new Map(seasonShows().map(a => [a.id, a]));
+  for (const e of Object.values(state.list)){
+    if (e.anime.airing && !projectAir(e.anime).done && !map.has(e.anime.id)) map.set(e.anime.id, e.anime);
+  }
+  const shows = [...map.values()].filter(a => (a.airing || a.up) && a.day !== null && /^\d{1,2}:\d\d/.test(a.time || ""));
+  const nAir = shows.filter(a => a.airing).length;
+  const head = `<div class="weekhead"><h2>放送日历 · Broadcast calendar</h2>
+    <span class="fnote">本季新番 · ${nAir} airing + ${shows.length - nAir} upcoming 未播 · times JST · 不含跨季旧番</span></div>`;
+  if (state.loadingSeason && !shows.length) return head + skeletons(7);
+  if (!shows.length) return head + `<div class="void"><p>No broadcast data yet.</p>
+    <button class="btn" data-act="refresh">Load season data</button></div>`;
+
+  const byHour = {};
+  for (const a of shows){
+    const h = Math.min(28, parseInt(a.time, 10) || 0);   // 24-28 = 深夜 late-night rows
+    (byHour[h] = byHour[h] || []).push(a);
+  }
+  const hours = Object.keys(byHour).map(Number).sort((a,b) => a - b);
+  let grid = `<span></span>` + WEEK_ORDER.map(d =>
+    `<span class="chead ${d === today ? "today" : ""}">${DAYS[d]}<span class="cn">${DAYS_CN[d]}</span></span>`).join("");
+  for (const h of hours){
+    grid += `<span class="ctime">${String(h).padStart(2,"0")}:00</span>`;
+    for (const d of WEEK_ORDER){
+      const rows = byHour[h].filter(a => a.day === d).sort((x,y) => (x.time||"").localeCompare(y.time||""));
+      grid += `<div class="ccell ${d === today ? "today" : ""}">${rows.map(a => {
+        const e = state.list[a.id];
+        return `<div class="cslot ${e ? "tracked" : ""} ${a.up ? "up" : ""}" data-act="${e ? "open" : "preview"}" data-id="${a.id}">
+          <div class="ct" title="${esc(a.native)}">${esc(cnTitle(a))}</div>
+          <div class="cm"><span>${esc(a.time)}</span>${cdChip(a, "cdinline")}${a.up ? `<span class="soon">未播</span>` : ""}${e ? `<i class="dot" style="background:${STATUS[e.status].color}"></i>` : ""}</div>
+        </div>`;
+      }).join("")}</div>`;
+    }
+  }
+  return head + `<div class="calwrap"><div class="cal">${grid}</div></div>`;
+}
+
+/* ----- up next (继续观看) -----
+   Every reference tracker leads with "what do I watch now?"; AniTrack could compute it
+   (airedSoFar) but only ever whispered it as a badge inside a card and one sort option.
+   This makes it a screen: the episodes waiting for you, freshest first, one click to log. */
+function upNextRows(){
+  const rows = [];
+  for (const [id, e] of Object.entries(state.list)){
+    if (e.status !== "watching" || !e.anime) continue;
+    const a = e.anime, p = projectAir(a);
+    const pending = p.aired === null ? 0 : p.aired - e.progress;
+    if (pending > 0){ rows.push({ id: +id, e, a, pending, next: e.progress + 1, kind: "behind" }); continue; }
+    /* "ended" must exclude not-yet-aired shows: a 12-ep Fall show tracked before its premiere
+       used to appear as "EP 1 +11 more · 12 episodes waiting" with a live +1 button. */
+    const ended = p.done || (!a.airing && !a.up);
+    if (ended && (!a.eps || e.progress < a.eps)){
+      rows.push({ id: +id, e, a, pending: a.eps ? a.eps - e.progress : null, next: e.progress + 1, kind: "catchup" });
+      continue;
+    }
+    if (p.nextAt) rows.push({ id: +id, e, a, pending: 0, next: p.nextEp || e.progress + 1, at: p.nextAt,
+                              kind: a.up && !p.aired ? "premiere" : "soon" });
+  }
+  const rank = { behind: 0, catchup: 1, soon: 2, premiere: 3 };
+  rows.sort((x, y) => rank[x.kind] - rank[y.kind]
+    || (x.at || y.at ? (x.at || 9e9) - (y.at || 9e9) : (y.pending || 0) - (x.pending || 0)));
+  return rows;
+}
+function renderUpNext(){
+  const rows = upNextRows();
+  const behind = rows.filter(r => r.kind === "behind" || r.kind === "catchup");
+  const soon = rows.filter(r => r.kind === "soon" || r.kind === "premiere");
+  const head = `<div class="weekhead"><h2>继续观看 · Up Next</h2>
+    <span class="fnote">${behind.length ? behind.reduce((n,r) => n + (r.pending || 0), 0) + " episodes waiting · 待看" : "all caught up · 已追平"}</span></div>`;
+  if (!Object.values(state.list).some(e => e.status === "watching"))
+    return head + `<div class="void"><p>Nothing is marked 在追 yet.</p>
+      <button class="btn" data-act="tab" data-id="season">Browse this season →</button></div>`;
+  if (!rows.length) return head + `<div class="void"><p>全部追平 — no pending episodes.</p></div>`;
+
+  const row = (r) => {
+    const a = r.a, cd = cdChip(a, "cdinline");
+    const label = (r.kind === "soon" || r.kind === "premiere")
+      ? `<span class="fnote">${r.kind === "premiere" ? "首播 premiere" : "next"} ${cd || (a.day !== null ? DAYS[a.day] + " " + esc(a.time || "") : "TBA")}</span>`
+      : `<span class="upn">EP ${r.next}${r.pending > 1 ? ` <i>+${r.pending - 1} more</i>` : r.pending === null ? ` <i>· ? left</i>` : ""}</span>`;
+    return `<div class="uprow ${r.kind}" data-act="open" data-id="${r.id}">
+      <div class="upcover">${a.image ? `<img src="${esc(a.image)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : ""}</div>
+      <div class="upmain">
+        <div class="uptitle">${esc(cnTitle(a))}</div>
+        <div class="upmeta">${label}<span class="fnote">${r.e.progress} / ${a.eps ?? "?"}</span>${(r.kind === "soon" || r.kind === "premiere") ? "" : cd}</div>
+        <div class="bar"><i style="width:${pct(r.e.progress, a.eps)}%;background:${STATUS.watching.color}"></i></div>
+      </div>
+      ${(r.kind === "soon" || r.kind === "premiere") ? "" : `<button class="plus" data-act="plus" data-id="${r.id}" aria-label="log episode ${r.next}">+1</button>`}
+    </div>`;
+  };
+  const sec = (title, list) => list.length
+    ? `<div class="upsec">${title}</div><div class="uplist">${list.map(row).join("")}</div>` : "";
+  return head + sec("待看 · waiting for you", behind) + sec("即将更新 · airing soon", soon);
+}
+
+/* ----- my list view ----- */
+/* Episodes aired so far for a currently-airing show: AniList's nextAiringEpisode.episode
+   is the NEXT one, so everything below it is already out. */
+function airedSoFar(a){
+  return projectAir(a).aired;
+}
+/* Body only — split out so typing in the list search repaints the grid without
+   destroying (and un-focusing) the search input itself. */
+function listBodyHTML(){
+  const all = Object.entries(state.list).map(([id, e]) => ({ id: +id, ...e }));
+  let rows = all.filter(e => state.filter === "all" || e.status === state.filter);
+  const q = state.lquery.trim().toLowerCase();
+  if (q) rows = rows.filter(e => e.anime.title.toLowerCase().includes(q) || (e.anime.native||"").includes(state.lquery.trim())
+    || cnOf(e.anime).includes(state.lquery.trim()));
+  const sorters = {
+    recent:   (a,b) => b.t - a.t,
+    title:    (a,b) => cnTitle(a.anime).localeCompare(cnTitle(b.anime), "zh"),
+    score:    (a,b) => b.score - a.score,
+    progress: (a,b) => pct(b.progress, b.anime.eps) - pct(a.progress, a.anime.eps),
+    behind:   (a,b) => {
+      const d = (x) => { const s = airedSoFar(x.anime); return s === null ? -1 : s - x.progress; };
+      return d(b) - d(a);
+    },
+  };
+  rows.sort(sorters[state.sort] || sorters.recent);
+
+  const today = jstToday();
+  const cards = rows.map(({ id, anime: a, status, progress, score }) => {
+    const aired = airedSoFar(a);
+    const behind = (status === "watching" && aired !== null) ? aired - progress : 0;
+    const badges =
+      `<span class="progbadge">${progress} / ${a.eps ?? "?"}</span>` +
+      (score > 0 ? `<span class="scorechip">★ ${score}</span>` : "") +
+      (behind > 0 ? `<span class="behindbadge"><i class="lamp"></i>${behind} 未看</span>`
+        : status === "watching" && a.airing && a.day === today ? `<span class="newbadge"><i class="lamp"></i>NEW EP</span>` : "");
+    return `<article class="card" data-act="open" data-id="${id}">
+      ${coverHTML(a, badges)}
+      <div class="cbody">
+        <h3 class="ctitle" title="${esc(a.native)}">${esc(cnTitle(a))}</h3>
+        ${a.native && cnTitle(a) !== a.native ? `<div class="cnative" title="${esc(a.native)}">${esc(a.native)}</div>` : ""}
+        <div class="bar"><i style="width:${pct(progress, a.eps)}%;background:${STATUS[status].color}"></i></div>
+        <div class="cfoot">
+          <span class="stag" style="color:${STATUS[status].color}">${STATUS[status].label}${cdChip(a, "cdinline")}</span>
+          ${status === "watching"
+            ? `<button class="plus" data-act="plus" data-id="${id}" aria-label="log next episode">+1</button>`
+            : `<span class="fnote">${esc([a.season, a.year].filter(Boolean).join(" ") || a.type)}</span>`}
+        </div>
+      </div></article>`;
+  }).join("");
+
+  return all.length === 0
+    ? `<div class="void"><p>Your list is empty. Search the box up top — or grab something airing this season.</p>
+       <button class="btn" data-act="tab" data-id="season">Browse this season →</button></div>`
+    : rows.length === 0
+      ? `<div class="void"><p>No matches${state.lquery ? ` for “${esc(state.lquery)}”` : ""} in “${esc(state.filter)}”.</p></div>`
+      : `<div class="grid">${cards}</div>`;
+}
+function renderList(){
+  const all = Object.values(state.list);
+  const counts = { all: all.length };
+  STATUS_KEYS.forEach(k => counts[k] = all.filter(e => e.status === k).length);
+  /* counts come from the unfiltered list, so the toolbar never changes while typing */
+  const pills = `<div class="pills" role="group" aria-label="status filter">
+    <button class="pill ${state.filter==="all"?"on":""}" data-act="filter" data-id="all">All <em>${counts.all}</em></button>
+    ${STATUS_KEYS.map(k => `<button class="pill ${state.filter===k?"on":""}" style="--pc:${STATUS[k].color}"
+      data-act="filter" data-id="${k}">${STATUS[k].label} <em>${counts[k]}</em></button>`).join("")}</div>`;
+
+  const tools = `<div class="tools">
+    <input class="lsearch" id="lsearch" placeholder="Search list… / 搜索" value="${esc(state.lquery)}" aria-label="search my list">
+    <select id="sortsel" aria-label="sort">
+      ${[["recent","Last updated"],["title","Title A–Z"],["score","My score"],["progress","Progress %"],["behind","Behind most"]]
+        .map(([v,l]) => `<option value="${v}" ${state.sort===v?"selected":""}>${l}</option>`).join("")}
+    </select></div>`;
+
+  return `<div class="toolbar">${pills}${tools}</div><div id="listbody">${listBodyHTML()}</div>`;
+}
+
+/* Membership for the current season: the acgsecrets roster is already exactly this season's
+   new shows; only fall back to filtering continuing long-runners when running on the live feed. */
+function seasonShows(){
+  return (state.season.length && state.season[0].cn) ? state.season : state.season.filter(isNewSeason);
+}
+/* ----- season view ----- */
+function renderSeason(){
+  const sn = seasonNow();
+  if (state.loadingSeason && !state.season.length)
+    return `<div class="seasonhead"><h2>${sn.name} ${sn.year}</h2><span>loading…</span></div>${skeletons(12)}`;
+  if (!state.season.length)
+    return `<div class="void"><p>No season data yet.</p><button class="btn" data-act="refresh">Load season data</button></div>`;
+
+  const today = jstToday();
+  const shows = [...seasonShows()].sort((a,b) => (b.mal||0)-(a.mal||0) || (b.members||0)-(a.members||0));
+  const src = state.season[0] && state.season[0].cn ? "acgsecrets 新番表" : "MAL";
+  const cards = shows.map(a => {
+    const badges =
+      `<span class="scorechip">${a.mal ? "★ " + a.mal.toFixed(2) : "N/A"}</span>` +
+      (a.up ? `<span class="contbadge">未播 SOON</span>`
+        : (a.day === today ? `<span class="newbadge"><i class="lamp"></i>TODAY</span>` : ""));
+    return showCard(a, badges, a.day !== null ? DAYS[a.day] + " " + esc(a.time || "") : "TBA");
+  }).join("");
+  return `<div class="seasonhead"><h2>${sn.name} ${sn.year}</h2>
+    <span>· 本季新番 · ${shows.length} titles · ${esc(src)} · sorted by MAL rating</span></div>
+    <div class="grid">${cards}</div>`;
+}
+
+/* Card shared by the season & archive grids. */
+function showCard(a, badges, note){
+  const e = state.list[a.id];
+  const act = a.nomal ? "nomalsearch" : (e ? "open" : "preview");
+  const foot = a.nomal
+    ? `<span class="fnote" title="not on MyAnimeList — click to search">未上MAL · 搜索</span>`
+    : (e ? `<span class="trackedtag" style="color:${STATUS[e.status].color}">✓ Tracking</span>`
+         : `<button class="plus wide" data-act="qtrack" data-id="${a.id}">＋ Track · 追</button>`);
+  return `<article class="card" data-act="${act}" data-id="${a.id}">
+    ${coverHTML(a, badges + cdChip(a, "cdchip"))}
+    <div class="cbody">
+      <h3 class="ctitle" title="${esc(a.native)}">${esc(cnTitle(a))}</h3>
+      ${a.native && cnTitle(a) !== a.native ? `<div class="cnative" title="${esc(a.native)}">${esc(a.native)}</div>` : ""}
+      <div class="genres">${a.adult ? `<b style="color:var(--red)">R18</b> · ` : ""}${esc(a.genres.join(" · ")) || "&nbsp;"}</div>
+      <div class="cfoot">
+        <span class="fnote">${note}</span>
+        ${foot}
+      </div>
+    </div></article>`;
+}
+
+/* ----- archive view ----- */
+function renderArchive(){
+  const y = state.arYear, s = state.arSeason, key = `${y}-${s}`;
+  const now = seasonNow(), nowIdx = SEASONS.indexOf(now.name.toLowerCase());
+  const sIdx = SEASONS.indexOf(s);
+  const atEdge = y === now.year && sIdx === nowIdx - 1 || (nowIdx === 0 && y === now.year - 1 && sIdx === 3);
+  const years = [];
+  for (let yy = (nowIdx === 0 ? now.year - 1 : now.year); yy >= 1970; yy--) years.push(yy);
+  const list = state.archive[key];
+  const head = `<div class="seasonhead">
+    <button class="btn small" data-act="arprev" aria-label="previous season">◀</button>
+    <h2>${s[0].toUpperCase() + s.slice(1)} ${y} · ${y}年${SEASON_CN[s]}季</h2>
+    <button class="btn small" data-act="arnext" aria-label="next season" ${atEdge ? "disabled" : ""}>▶</button>
+    <select id="arseason" aria-label="season">
+      ${SEASONS.map(k => `<option value="${k}" ${k === s ? "selected" : ""}>${k[0].toUpperCase() + k.slice(1)} · ${SEASON_CN[k]}</option>`).join("")}
+    </select>
+    <select id="aryear" aria-label="year">
+      ${years.map(yy => `<option value="${yy}" ${yy === y ? "selected" : ""}>${yy}</option>`).join("")}
+    </select>
+    <span>${list ? `· ${list.length} TV titles · sorted by MAL rating` : ""}</span>
+  </div>`;
+  if (state.loadingArchive && !list) return head + skeletons(12);
+  if (!list) return head + `<div class="void"><p>${state.archiveError || "No data loaded."}</p>
+    <button class="btn" data-act="arretry">Retry</button></div>`;
+  if (!list.length) return head + `<div class="void"><p>Jikan has no TV titles for this season.</p></div>`;
+  const shows = [...list].sort((a,b) => (b.mal||0)-(a.mal||0) || (b.members||0)-(a.members||0));
+  const cards = shows.map(a => showCard(a,
+    `<span class="scorechip">${a.mal ? "★ " + a.mal.toFixed(2) : "N/A"}</span>`,
+    a.eps ? a.eps + " eps" : esc(a.type))).join("");
+  return head + `<div class="grid">${cards}</div>`;
+}
+
+/* ----- top anime view ----- */
+function renderAllAnime(){
+  const pills = `<div class="pills" role="group" aria-label="genre filter">
+    <button class="pill ${!state.allGenre ? "on":""}" data-act="genre" data-id="">全部 All</button>
+    ${GENRES.map(gn => `<button class="pill ${state.allGenre === String(gn.mal) ? "on":""}"
+      data-act="genre" data-id="${gn.mal}">${gn.cn} ${gn.en}</button>`).join("")}</div>`;
+  const g = GENRES.find(x => String(x.mal) === state.allGenre);
+  const head = `<div class="seasonhead"><h2>全部番剧 · Top Anime</h2>
+    <span>· ${g ? g.en + " · " : ""}sorted by score · ${state.allSrc === "anilist" ? "AniList" : "MyAnimeList"}${
+      state.all.length ? " · " + state.all.length + " loaded" : ""}</span></div>`;
+  if (state.loadingAll && !state.all.length) return head + `<div class="toolbar">${pills}</div>` + skeletons(12);
+  if (!state.all.length)
+    return head + `<div class="toolbar">${pills}</div><div class="void">
+      <p>${state.allError || "Nothing here yet."}</p><button class="btn" data-act="allmore">${state.allError ? "Retry" : "Load"}</button></div>`;
+  const cards = state.all.map(a => showCard(a,
+    `<span class="scorechip">${a.mal ? "★ " + a.mal.toFixed(2) : "N/A"}</span>`,
+    esc([a.type, a.year].filter(Boolean).join(" · ")))).join("");
+  const foot = state.allError
+    ? `<div class="void" style="margin-top:16px"><p>${state.allError}</p><button class="btn" data-act="allmore">Retry</button></div>`
+    : state.allDone ? ""
+    : `<div style="text-align:center;margin-top:18px"><button class="btn" data-act="allmore" ${state.loadingAll ? "disabled" : ""}>${
+        state.loadingAll ? "Loading…" : "Load more · 加载更多"}</button></div>`;
+  return head + `<div class="toolbar">${pills}</div><div class="grid">${cards}</div>${foot}`;
+}
+
+function skeletons(n){
+  return `<div class="grid">${Array.from({length:n}, () => `<div class="skel"></div>`).join("")}</div>`;
+}
+
+/* ----- modal ----- */
+/* The franchise chain, stamped with YOUR OWN progress — the thing a tracker can do that a
+   public chart cannot. Answers "this is a S3, did I finish S2?" and "I just finished it,
+   what's next?" without leaving the app. */
+function seriesRow(a){
+  if (!a || !a.id || a.id <= 0) return "";
+  const l = state.rel[a.id];
+  if (l === undefined){
+    if (linkRetry[a.id] && Date.now() < linkRetry[a.id]) return "";
+    loadLinks(a.id);
+    return "";                                  // the WATCH row already shows the pending state
+  }
+  if (l === null || !l.length) return "";
+  const chips = l.map(r => {
+    const sn = r.snap, e = state.list[sn.id];
+    const name = cnTitle(sn);
+    /* label the FORMAT too: a franchise can return a TV prequel and a recap MOVIE prequel, and
+       calling them both "前作" would tell you you are a season behind when you are not. */
+    const kind = (REL_LABEL[r.rt] || r.rt).split(" ")[0] + (sn.type && sn.type !== "TV" ? " · " + esc(sn.type) : "");
+    const tail = e
+      ? `<i class="sdot" style="background:${STATUS[e.status].color}"></i>${STATUS[e.status].cn} ${e.progress}/${sn.eps ?? "?"}`
+      : `<button class="smini" data-act="qptw" data-id="${sn.id}" title="加入想看 · plan to watch">＋</button>`;
+    return `<span class="schip ${e ? "have" : ""}" data-act="${e ? "open" : "preview"}" data-id="${sn.id}">
+      <b>${esc(kind)}</b><span class="sname" title="${esc(sn.native || "")}">${esc(name)}</span>${tail}</span>`;
+  }).join("");
+  return `<div class="series"><span class="slabel">系列 SERIES</span>${chips}</div>`;
+}
+function streamRow(a){
+  if (!a || !a.id || a.id <= 0) return "";
+  const l = state.links[a.id];
+  if (l === undefined){
+    if (linkRetry[a.id] && Date.now() < linkRetry[a.id]) return "";   // lookup failed; stay quiet
+    loadLinks(a.id);
+    return `<div class="streams"><span class="slabel">观看 WATCH</span><span class="fnote">…</span></div>`;
+  }
+  if (l === null) return `<div class="streams"><span class="slabel">观看 WATCH</span><span class="fnote">…</span></div>`;
+  if (!l.length) return "";
+  return `<div class="streams"><span class="slabel">观看 WATCH</span>` +
+    l.filter(x => safeUrl(x.url)).map(x => `<a class="streamlink" href="${esc(safeUrl(x.url))}" target="_blank" rel="noopener">${esc(x.site)} ↗</a>`).join("") +
+    `</div>`;
+}
+function renderModal(){
+  const root = $("#modalroot");
+  const id = state.openId;
+  const e = id ? state.list[id] : null;
+  const a = e ? e.anime : state.openPreview;
+  if (!a){ root.innerHTML = ""; root.dataset.show = ""; return; }
+  /* Re-rendering the same show (+1, a status change, the WATCH/SERIES rows arriving async) used to
+     snap the sheet back to the top under the user. Only a different show starts at the top. */
+  const prevSheet = root.querySelector(".sheet");
+  const keepScroll = prevSheet && root.dataset.show === String(a.id) ? prevSheet.scrollTop : 0;
+
+  const today = jstToday();
+  const meta = [
+    [a.season, a.year].filter(Boolean).join(" ") || a.type,
+    a.eps ? a.eps + " eps" : "eps TBA",
+    a.studio,
+    a.mal ? "MAL ★ " + a.mal : null,
+    a.members ? Intl.NumberFormat().format(a.members) + " members" : null,
+  ].filter(Boolean).join(" · ");
+
+  const controls = e ? `
+    <div class="srow"><span class="lbl">STATUS</span>
+      <div class="pills tight">${STATUS_KEYS.map(k => `<button class="pill ${e.status===k?"on":""}"
+        style="--pc:${STATUS[k].color}" data-act="status" data-id="${a.id}" data-val="${k}">${STATUS[k].label}</button>`).join("")}</div>
+    </div>
+    <div class="srow"><span class="lbl">PROGRESS</span>
+      <div class="stepper">
+        <button data-act="minus" data-id="${a.id}" aria-label="decrease">−</button>
+        <b>${e.progress}<i>/ ${a.eps ?? "?"}</i></b>
+        <button data-act="plus" data-id="${a.id}" aria-label="increase">＋</button>
+      </div>
+    </div>
+    <div class="srow"><span class="lbl">MY SCORE</span>
+      <select id="scoresel" data-id="${a.id}">
+        <option value="0">— not scored —</option>
+        ${[10,9,8,7,6,5,4,3,2,1].map(n => `<option value="${n}" ${e.score===n?"selected":""}>${n} · ${SCORE_LABELS[n]}</option>`).join("")}
+      </select>
+    </div>
+    <div class="srow end"><button class="btn danger" data-act="remove" data-id="${a.id}">Remove from list</button></div>`
+  : `
+    <div class="srow end">
+      <button class="btn" data-act="addptw" data-id="${a.id}">＋ Plan to Watch</button>
+      <button class="plus" data-act="qtrack" data-id="${a.id}" style="padding:9px 16px">＋ Start Watching · 追</button>
+    </div>`;
+
+  root.innerHTML = `
+  <div class="veil" data-act="close">
+    <div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(a.title)}">
+      <div class="sheettop">
+        ${coverHTML(a)}
+        <div class="smeta">
+          <h2>${esc(cnTitle(a))}</h2>
+          <p class="native">${esc([...new Set([a.native, a.title])].filter(t => t && t !== cnTitle(a)).join(" · "))}</p>
+          <p class="metaline">${esc(meta)}${a.genres.length ? " · " + esc(a.genres.join(", ")) : ""}</p>
+          ${a.airing && a.day === today ? `<span class="onair"><i class="lamp"></i>AIRS TODAY</span>` : ""}
+          ${fmtUntil(a.at) ? `<span class="onair" style="color:var(--cyan);border-color:rgba(94,225,255,.4);background:rgba(94,225,255,.08)">${a.up ? "首播" : "下一集"} ${cdChip(a, "cdinline")}</span>` : ""}
+        </div>
+        <button class="x" data-act="close" aria-label="close">✕</button>
+      </div>
+      ${a.synopsis ? `<p class="syno">${esc(a.synopsis)}…</p>` : ""}
+      ${seriesRow(a)}
+      ${streamRow(a)}
+      ${safeUrl(a.url) ? `<a class="mallink" href="${esc(safeUrl(a.url))}" target="_blank" rel="noopener">open on MyAnimeList ↗</a>` : ""}
+      ${controls}
+    </div>
+  </div>`;
+  root.dataset.show = String(a.id);
+  if (keepScroll){ const sh = root.querySelector(".sheet"); if (sh) sh.scrollTop = keepScroll; }
+}
+
+function renderView(){
+  const v = state.tab === "next" ? renderUpNext()
+    : state.tab === "schedule" ? renderSchedule() : state.tab === "cal" ? renderCalendar()
+    : state.tab === "season" ? renderSeason()
+    : state.tab === "past" ? renderArchive() : state.tab === "all" ? renderAllAnime() : renderList();
+  $("#view").innerHTML = v;
+}
+function renderAll(){
+  renderHeaderBits(); renderStats(); renderTabs(); renderBanner(); renderView(); renderModal();
+}
+
+/* ---------------- events (delegated) ---------------- */
+document.addEventListener("click", (ev) => {
+  const el = ev.target.closest("[data-act]");
+  /* click-away closes the search dropdown */
+  if (!ev.target.closest(".gsearch")) closeSearch(false);
+  if (!el) return;
+  const act = el.dataset.act, id = el.dataset.id ? +el.dataset.id : null;
+  const stop = () => ev.stopPropagation();
+
+  switch (act){
+    case "tab":
+      state.tab = el.dataset.id;
+      try { localStorage.setItem("anitrack:tab", state.tab); } catch {}
+      if (state.tab === "past" && !state.archive[`${state.arYear}-${state.arSeason}`]) loadArchive(state.arYear, state.arSeason);
+      else if (state.tab === "all" && !state.all.length && !state.loadingAll) loadAllPage(true);
+      else renderAll();
+      break;
+    case "filter":  state.filter = el.dataset.id; renderAll(); break;
+    case "plus":    stop(); plusOne(id); break;
+    case "minus":   stop(); minusOne(id); break;
+    case "open":    state.openId = id; state.openPreview = null; renderModal(); break;
+    case "close":   if (ev.target === el || el.classList.contains("x")){ state.openId = null; state.openPreview = null; renderModal(); } break;
+    case "status":  stop(); setStatus(id, el.dataset.val); renderModal(); break;
+    case "remove":  removeEntry(id); break;
+    case "qtrack": { stop();
+      const s = findSnap(id); if (s){ track(s, "watching"); state.openPreview = null; state.openId = id; renderModal(); }
+      break; }
+    case "qptw": { stop();
+      const s = findSnap(id);
+      if (s){ track(s, "ptw"); renderModal(); }   // stay on the show being read
+      break; }
+    case "addptw": { stop();
+      const s = findSnap(id); if (s){ track(s, "ptw"); state.openPreview = null; state.openId = id; renderModal(); }
+      break; }
+    case "qadd": { stop();
+      const s = (state.searchResults || []).find(x => x.id === id);
+      if (s){ track(s, "watching"); renderSearch(); } // keep results open for adding more
+      break; }
+    case "preview": {
+      const s = findSnap(id);
+      if (s){ state.openPreview = s; state.openId = null; closeSearch(false); renderModal(); }
+      break; }
+    case "nomalsearch": {   // display-only show (not on MAL) — run a live search by its name
+      const s = findSnap(id), q = s && (s.native || s.title);
+      if (q){ const g = $("#gsearch"); if (g){ g.value = q; g.focus(); window.scrollTo(0,0); } onSearchInput(q); }
+      break; }
+    case "genre":   state.allGenre = el.dataset.id; loadAllPage(true); break;
+    case "allmore": loadAllPage(false); break;
+    case "arprev":  stepArchive(-1); break;
+    case "arnext":  stepArchive(1); break;
+    case "arretry": loadArchive(state.arYear, state.arSeason); break;
+    case "refresh": loadSeason(true); break;
+    case "export":  exportList(); break;
+    case "import":  $("#importfile").click(); break;
+  }
+});
+function findSnap(id){
+  return (state.searchResults || []).find(x => x.id === id)
+      || state.season.find(x => x.id === id)
+      || (state.archive[`${state.arYear}-${state.arSeason}`] || []).find(x => x.id === id)
+      || state.all.find(x => x.id === id)
+      || (state.list[id] && state.list[id].anime)
+      || (state.openPreview && state.openPreview.id === id ? state.openPreview : null)
+      || (Object.values(state.rel).flat().find(r => r && r.snap && r.snap.id === id) || {}).snap
+      || null;
+}
+
+document.addEventListener("change", (ev) => {
+  if (ev.target.id === "sortsel"){ state.sort = ev.target.value; renderView(); }
+  if (ev.target.id === "aryear"){ const c = clampArchive(+ev.target.value, state.arSeason); loadArchive(c.year, c.name); }
+  if (ev.target.id === "arseason"){ const c = clampArchive(state.arYear, ev.target.value); loadArchive(c.year, c.name); }
+  if (ev.target.id === "scoresel"){
+    const id = +ev.target.dataset.id;
+    touch(id, { score: +ev.target.value });
+    toast("Score saved"); renderAll();
+  }
+  if (ev.target.id === "importfile"){
+    const f = ev.target.files && ev.target.files[0];
+    if (f){
+      f.text().then(txt => {
+        const data = JSON.parse(txt);
+        if (!data || typeof data !== "object" || Array.isArray(data)) throw new Error("bad shape");
+        /* Validate and re-key before replacing anything: the old version trusted the file
+           wholesale, so one malformed export silently destroyed the tracked list. */
+        const clean = {};
+        for (const [k, v] of Object.entries(data)){
+          if (!v || typeof v !== "object" || Array.isArray(v) || !v.anime || typeof v.anime !== "object") continue;
+          const id = Number(v.anime.id ?? k);
+          if (!Number.isFinite(id) || id === 0) continue;
+          clean[id] = {
+            status: STATUS[v.status] ? v.status : "watching",
+            progress: Math.max(0, Math.floor(+v.progress) || 0),
+            score: Math.min(10, Math.max(0, Math.floor(+v.score) || 0)),
+            t: Number.isFinite(+v.t) ? +v.t : Date.now(),
+            anime: { ...v.anime,
+              at: Number.isFinite(+v.anime.at) && +v.anime.at > 0 ? +v.anime.at : null,
+              nextEp: Number.isFinite(+v.anime.nextEp) && +v.anime.nextEp > 0 ? Math.floor(+v.anime.nextEp) : null,
+              eps: Number.isFinite(+v.anime.eps) && +v.anime.eps > 0 ? Math.floor(+v.anime.eps) : null,
+              url: safeUrl(v.anime.url) },
+          };
+        }
+        const n = Object.keys(clean).length;
+        if (!n) throw new Error("no valid entries");
+        try { localStorage.setItem(LS_LIST + ":backup", JSON.stringify(state.list)); } catch {}
+        state.list = clean; saveList();
+        toast(`Imported ${n} entries ✓ — previous list kept as backup`, "gold");
+        renderAll();
+      }).catch(() => toast("Import failed — not a valid AniTrack export", "warn"));
+    }
+    ev.target.value = "";
+  }
+});
+
+document.addEventListener("input", (ev) => {
+  if (ev.target.id === "gsearch") onSearchInput(ev.target.value);
+  if (ev.target.id === "lsearch"){
+    state.lquery = ev.target.value;
+    /* repaint only the grid — renderView() would replace the input mid-keystroke and drop focus */
+    const body = $("#listbody");
+    if (body && state.tab === "list") body.innerHTML = listBodyHTML();
+    else renderView();
+  }
+});
+document.addEventListener("keydown", (ev) => {
+  if (ev.key === "Escape"){ state.openId = null; state.openPreview = null; renderModal(); closeSearch(false); }
+});
+
+function exportList(){
+  const blob = new Blob([JSON.stringify(state.list, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "anitrack-list-" + new Date().toISOString().slice(0,10) + ".json";
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast("List exported");
+}
+
+/* ---------------- boot ---------------- */
+{ const ps = prevSeason(); state.arYear = ps.year; state.arSeason = ps.name; }
+/* Land where the evening starts: Up Next if episodes are waiting, else wherever the user last was. */
+{
+  let last = null; try { last = localStorage.getItem("anitrack:tab"); } catch {}
+  const waiting = upNextRows().some(r => r.kind === "behind" || r.kind === "catchup");
+  state.tab = waiting ? "next" : (["next","schedule","cal","list","season","past","all"].includes(last) ? last : "list");
+}
+renderAll();          // instant paint from localStorage
+/* installed-app shell: skipped on file:// so double-click use is unchanged */
+if ("serviceWorker" in navigator && location.protocol !== "file:") navigator.serviceWorker.register("sw.js").catch(() => {});
+loadSeason(false);    // then hydrate live data
+
+/* A tab left open across midnight JST (or across Oct 1) used to keep showing the old
+   day's schedule and the old season's roster until manually reloaded. Watch for both. */
+let lastJstDay = jstToday(), lastSeasonKey = curSeasonKey();
+setInterval(() => {
+  const day = jstToday(), key = curSeasonKey();
+  if (key !== lastSeasonKey){
+    lastSeasonKey = key; lastJstDay = day;
+    state.season = []; state.seasonAt = 0;          // drop last season's rows
+    const sn = seasonNow();
+    toast(`新番季更新 · ${sn.name} ${sn.year}`, "gold");
+    loadSeason(true);
+    return;
+  }
+  if (day !== lastJstDay){ lastJstDay = day; renderAll(); return; }  // new JST day → today-markers move
+  renderHeaderBits();
+  tickCountdowns();
+}, 60000);
+</script>
+</body>
+</html>

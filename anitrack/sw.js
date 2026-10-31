@@ -5,7 +5,7 @@
    Cross-origin requests (AniList / Jikan / Bangumi APIs, cover images) are deliberately NOT
    intercepted: the app manages its own API caching and freshness, and caching thousands of
    covers would bloat storage on a shared origin (DayLedger and Larder live here too). */
-const CACHE = "anitrack-v1";
+const CACHE = "anitrack-v2";
 const CORE = ["./anitrack.html", "./anitrack-cn-data.js"];
 
 self.addEventListener("install", e => {
